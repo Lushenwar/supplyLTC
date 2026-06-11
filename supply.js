@@ -56,7 +56,8 @@ const INVENTORY = [
     "productName": "6-Inch Non-Sterile Cotton Tipped Applicators",
     "manufacturer": "Unknown",
     "suggestedStatus": "match",
-    "imageUrl": "https://kinemedics.com/wp-content/uploads/2023/09/cotton-tip6.png"
+    "imageUrl": "https://kinemedics.com/wp-content/uploads/2023/09/cotton-tip6.png",
+    "imageFallback": "/images/211-806.png"
   },
   {
     "storage": "3W",
@@ -1268,7 +1269,8 @@ const INVENTORY = [
     "productName": "Universal Transport Medium (UTM) for Viruses",
     "manufacturer": "Copan",
     "suggestedStatus": "match",
-    "imageUrl": "https://www.copanusa.com/wp-content/uploads/2024/01/3C061N-1-1.png"
+    "imageUrl": "https://www.copanusa.com/wp-content/uploads/2024/01/3C061N-1-1.png",
+    "imageFallback": "/images/3c0-47n.png"
   },
   {
     "storage": "3W",
@@ -1575,7 +1577,8 @@ const INVENTORY = [
     "productName": "70% Isopropyl Rubbing Alcohol Antiseptic",
     "manufacturer": "Unknown",
     "suggestedStatus": "match",
-    "imageUrl": "https://digital.loblaws.ca/PCX/21427021_EA/en/1/21427021_en_front_800.png"
+    "imageUrl": "https://digital.loblaws.ca/PCX/21427021_EA/en/1/21427021_en_front_800.png",
+    "imageFallback": "/images/6572-0502-0.jpg"
   },
   {
     "storage": "7W Record RM",
@@ -1673,7 +1676,8 @@ const INVENTORY = [
     "productName": "Methylcellulose 1% Artificial Tears Lubricating Eyedrops",
     "manufacturer": "Unknown",
     "suggestedStatus": "match",
-    "imageUrl": "https://store.whitecrossdispensary.com/cdn/shop/files/40201-alcon.png?v=1734014777&width=645"
+    "imageUrl": "https://store.whitecrossdispensary.com/cdn/shop/files/40201-alcon.png?v=1734014777&width=645",
+    "imageFallback": "/images/6552-1804-0.png"
   },
   {
     "storage": "7W Record RM",
