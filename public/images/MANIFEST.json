@@ -1,0 +1,836 @@
+[
+  {
+    "code": "163-52434-U",
+    "productName": "Welch Allyn Disposable Ear Specula (850/pk)",
+    "suggestedFileName": "163-52434-u.jpg",
+    "imageUrl": "/images/163-52434-u.jpg"
+  },
+  {
+    "code": "163-05031-105\\517SDML",
+    "productName": "Welch Allyn SureTemp Plus Probe Covers",
+    "suggestedFileName": "163-05031-105-517sdml.jpg",
+    "imageUrl": "/images/163-05031-105-517sdml.jpg"
+  },
+  {
+    "code": "211-803",
+    "productName": "3-Inch Non-Sterile Cotton Tipped Applicators",
+    "suggestedFileName": "211-803.jpg",
+    "imageUrl": "/images/211-803.jpg"
+  },
+  {
+    "code": "211-806",
+    "productName": "6-Inch Non-Sterile Cotton Tipped Applicators",
+    "suggestedFileName": "211-806.jpg",
+    "imageUrl": "/images/211-806.jpg"
+  },
+  {
+    "code": "211-807",
+    "productName": "6-Inch Sterile Cotton Tipped Applicators",
+    "suggestedFileName": "211-807.jpg",
+    "imageUrl": "/images/211-807.jpg"
+  },
+  {
+    "code": "NONPC1001",
+    "productName": "Silent Knight Pill Crusher Pouches (1000/pk)",
+    "suggestedFileName": "nonpc1001.jpg",
+    "imageUrl": "/images/nonpc1001.jpg"
+  },
+  {
+    "code": "211-40003",
+    "productName": "Junior Tongue Depressors",
+    "suggestedFileName": "211-40003.jpg",
+    "imageUrl": "/images/211-40003.jpg"
+  },
+  {
+    "code": "533-JB1322P",
+    "productName": "0.9% Sodium Chloride Injection USP 250mL Bag",
+    "suggestedFileName": "533-jb1322p.jpg",
+    "imageUrl": "/images/533-jb1322p.jpg"
+  },
+  {
+    "code": "533-JB1323",
+    "productName": "0.9% Sodium Chloride Injection USP 500mL Bag",
+    "suggestedFileName": "533-jb1323.jpg",
+    "imageUrl": "/images/533-jb1323.jpg"
+  },
+  {
+    "code": "533-JB0063",
+    "productName": "5% Dextrose Injection USP 500mL Bag",
+    "suggestedFileName": "533-jb0063.jpg",
+    "imageUrl": "/images/533-jb0063.jpg"
+  },
+  {
+    "code": "308-383319",
+    "productName": "BD Saf-T-Intima IV Catheter 24G x 0.75\"",
+    "suggestedFileName": "308-383319.jpg",
+    "imageUrl": "/images/308-383319.jpg"
+  },
+  {
+    "code": "E22-C1000",
+    "productName": "Clave Needleless Connector",
+    "suggestedFileName": "e22-c1000.jpg",
+    "imageUrl": "/images/e22-c1000.jpg"
+  },
+  {
+    "code": "425T142",
+    "productName": "Gripper Plus Non-Coring Safety Needle",
+    "suggestedFileName": "425t142.jpg",
+    "imageUrl": "/images/425t142.jpg"
+  },
+  {
+    "code": "308-329505",
+    "productName": "BD AutoShield Duo Pen Needle 30G x 5mm",
+    "suggestedFileName": "308-329505.jpg",
+    "imageUrl": "/images/308-329505.jpg"
+  },
+  {
+    "code": "MPHSFTY28",
+    "productName": "Safety Blood Lancet Micro Flow 28G",
+    "suggestedFileName": "mphsfty28.jpg",
+    "imageUrl": "/images/mphsfty28.jpg"
+  },
+  {
+    "code": "533-2C8401",
+    "productName": "ClearLink IV Solution Set 76\" 10 Drop",
+    "suggestedFileName": "533-2c8401.jpg",
+    "imageUrl": "/images/533-2c8401.jpg"
+  },
+  {
+    "code": "533-1C8109",
+    "productName": "IV Solution Set No Injection Site 101\"",
+    "suggestedFileName": "533-1c8109.jpg",
+    "imageUrl": "/images/533-1c8109.jpg"
+  },
+  {
+    "code": "308-305764",
+    "productName": "BD SafetyGlide Shielding Needle 21G x 1\"",
+    "suggestedFileName": "308-305764.jpg",
+    "imageUrl": "/images/308-305764.jpg"
+  },
+  {
+    "code": "308-305762",
+    "productName": "BD SafetyGlide Shielding Needle 23G x 1\"",
+    "suggestedFileName": "308-305762.jpg",
+    "imageUrl": "/images/308-305762.jpg"
+  },
+  {
+    "code": "SYR110022F",
+    "productName": "Blunt Fill Needle 18G x 1.5\" with Filter",
+    "suggestedFileName": "syr110022f.jpg",
+    "imageUrl": "/images/syr110022f.jpg"
+  },
+  {
+    "code": "308-305787",
+    "productName": "BD SafetyGlide Needle with Luer-Lok Syringe",
+    "suggestedFileName": "308-305787.jpg",
+    "imageUrl": "/images/308-305787.jpg"
+  },
+  {
+    "code": "SN2510",
+    "productName": "Sol-Care Safety Needle 25G x 1\"",
+    "suggestedFileName": "sn2510.jpg",
+    "imageUrl": "/images/sn2510.jpg"
+  },
+  {
+    "code": "280-SG3-2325",
+    "productName": "SurGuard3 Safety Needle 23G x 1\"",
+    "suggestedFileName": "280-sg3-2325.jpg",
+    "imageUrl": "/images/280-sg3-2325.jpg"
+  },
+  {
+    "code": "308-305930",
+    "productName": "BD Insulin Syringe 1mL 29G x 0.5\"",
+    "suggestedFileName": "308-305930.jpg",
+    "imageUrl": "/images/308-305930.jpg"
+  },
+  {
+    "code": "308-305060",
+    "productName": "BD 3mL Syringe with 18G Blunt Fill Needle",
+    "suggestedFileName": "308-305060.jpg",
+    "imageUrl": "/images/308-305060.jpg"
+  },
+  {
+    "code": "SYR101010LD",
+    "productName": "1mL Luer Lock Syringe Only Sterile",
+    "suggestedFileName": "syr101010ld.jpg",
+    "imageUrl": "/images/syr101010ld.jpg"
+  },
+  {
+    "code": "SYR103010",
+    "productName": "3mL Luer Lock Syringe Only Sterile",
+    "suggestedFileName": "syr103010.jpg",
+    "imageUrl": "/images/syr103010.jpg"
+  },
+  {
+    "code": "308-302995",
+    "productName": "BD 10mL Luer Lock Syringe Only",
+    "suggestedFileName": "308-302995.jpg",
+    "imageUrl": "/images/308-302995.jpg"
+  },
+  {
+    "code": "308-309654",
+    "productName": "BD 60mL Slip Tip Syringe Only",
+    "suggestedFileName": "308-309654.jpg",
+    "imageUrl": "/images/308-309654.jpg"
+  },
+  {
+    "code": "DYND20325",
+    "productName": "Piston Style 60mL Irrigation Syringe",
+    "suggestedFileName": "dynd20325.jpg",
+    "imageUrl": "/images/dynd20325.jpg"
+  },
+  {
+    "code": "320-ENFIT9000NS",
+    "productName": "ENFit Quick Switch Y-Adapter Valve",
+    "suggestedFileName": "320-enfit9000ns.jpg",
+    "imageUrl": "/images/320-enfit9000ns.jpg"
+  },
+  {
+    "code": "NON66160",
+    "productName": "ENFit Sterile Syringe 60mL",
+    "suggestedFileName": "non66160.jpg",
+    "imageUrl": "/images/non66160.jpg"
+  },
+  {
+    "code": "ZBSPFF",
+    "productName": "Kangaroo OMNI Enteral Feeding Set 1000mL",
+    "suggestedFileName": "zbspff.jpg",
+    "imageUrl": "/images/zbspff.jpg"
+  },
+  {
+    "code": "200-69C",
+    "productName": "Addipak 0.9% Normal Saline Solution 15mL",
+    "suggestedFileName": "200-69c.jpg",
+    "imageUrl": "/images/200-69c.jpg"
+  },
+  {
+    "code": "DYND50216",
+    "productName": "Non-Conductive Connecting Suction Tubing 6ft",
+    "suggestedFileName": "dynd50216.jpg",
+    "imageUrl": "/images/dynd50216.jpg"
+  },
+  {
+    "code": "HCS4600B",
+    "productName": "Medium Concentration Oxygen Face Mask",
+    "suggestedFileName": "hcs4600b.jpg",
+    "imageUrl": "/images/hcs4600b.jpg"
+  },
+  {
+    "code": "HCS4514",
+    "productName": "Adult Oxygen Nasal Cannula",
+    "suggestedFileName": "hcs4514.jpg",
+    "imageUrl": "/images/hcs4514.jpg"
+  },
+  {
+    "code": "320-HCS4507",
+    "productName": "Crush Resistant Oxygen Tubing 7ft",
+    "suggestedFileName": "320-hcs4507.jpg",
+    "imageUrl": "/images/320-hcs4507.jpg"
+  },
+  {
+    "code": "DYND40922A",
+    "productName": "Whistle Tip Suction Catheter 14Fr",
+    "suggestedFileName": "dynd40922a.jpg",
+    "imageUrl": "/images/dynd40922a.jpg"
+  },
+  {
+    "code": "DYND41903",
+    "productName": "Whistle Tip Suction Catheter 16Fr",
+    "suggestedFileName": "dynd41903.jpg",
+    "imageUrl": "/images/dynd41903.jpg"
+  },
+  {
+    "code": "DYND50130",
+    "productName": "Yankauer Suction Handle Non-Vented",
+    "suggestedFileName": "dynd50130.jpg",
+    "imageUrl": "/images/dynd50130.jpg"
+  },
+  {
+    "code": "211-MM-05507",
+    "productName": "Medium Isopropyl Alcohol Prep Pads",
+    "suggestedFileName": "211-mm-05507.jpg",
+    "imageUrl": "/images/211-mm-05507.jpg"
+  },
+  {
+    "code": "533-JF7624",
+    "productName": "Sterile Water for Irrigation 1000mL Pour Bottle",
+    "suggestedFileName": "533-jf7624.jpg",
+    "imageUrl": "/images/533-jf7624.jpg"
+  },
+  {
+    "code": "533-JF7623",
+    "productName": "Sterile Water for Irrigation 500mL Pour Bottle",
+    "suggestedFileName": "533-jf7623.jpg",
+    "imageUrl": "/images/533-jf7623.jpg"
+  },
+  {
+    "code": "533-JF7633P",
+    "productName": "0.9% Sodium Chloride Irrigation Solution 1000mL",
+    "suggestedFileName": "533-jf7633p.jpg",
+    "imageUrl": "/images/533-jf7633p.jpg"
+  },
+  {
+    "code": "211-136",
+    "productName": "Piston Syringe Irrigation Tray 60cc",
+    "suggestedFileName": "211-136.jpg",
+    "imageUrl": "/images/211-136.jpg"
+  },
+  {
+    "code": "DYND11500",
+    "productName": "2-Way 100% Silicone Foley Catheter 12Fr 10cc",
+    "suggestedFileName": "dynd11500.jpg",
+    "imageUrl": "/images/dynd11500.jpg"
+  },
+  {
+    "code": "DYND11501",
+    "productName": "2-Way 100% Silicone Foley Catheter 14Fr 10cc",
+    "suggestedFileName": "dynd11501.jpg",
+    "imageUrl": "/images/dynd11501.jpg"
+  },
+  {
+    "code": "DYND11502",
+    "productName": "2-Way 100% Silicone Foley Catheter 16Fr 10cc",
+    "suggestedFileName": "dynd11502.jpg",
+    "imageUrl": "/images/dynd11502.jpg"
+  },
+  {
+    "code": "DYND11752",
+    "productName": "Silicone-Coated 2-Way Foley Catheter 12Fr 10cc",
+    "suggestedFileName": "dynd11752.jpg",
+    "imageUrl": "/images/dynd11752.jpg"
+  },
+  {
+    "code": "DYND11754",
+    "productName": "Silicone-Coated 2-Way Foley Catheter 14Fr 10cc",
+    "suggestedFileName": "dynd11754.jpg",
+    "imageUrl": "/images/dynd11754.jpg"
+  },
+  {
+    "code": "DYND11756",
+    "productName": "Silicone-Coated 2-Way Foley Catheter 16Fr 10cc",
+    "suggestedFileName": "dynd11756.jpg",
+    "imageUrl": "/images/dynd11756.jpg"
+  },
+  {
+    "code": "DYND16900",
+    "productName": "Foley Catheter Leg Strap with Velcro Closure",
+    "suggestedFileName": "dynd16900.jpg",
+    "imageUrl": "/images/dynd16900.jpg"
+  },
+  {
+    "code": "DYND13512",
+    "productName": "Red Rubber Intermittent Catheter 12Fr",
+    "suggestedFileName": "dynd13512.jpg",
+    "imageUrl": "/images/dynd13512.jpg"
+  },
+  {
+    "code": "DYND13514",
+    "productName": "Red Rubber Intermittent Catheter 14Fr",
+    "suggestedFileName": "dynd13514.jpg",
+    "imageUrl": "/images/dynd13514.jpg"
+  },
+  {
+    "code": "DYND13516",
+    "productName": "Red Rubber Intermittent Catheter 16Fr",
+    "suggestedFileName": "dynd13516.jpg",
+    "imageUrl": "/images/dynd13516.jpg"
+  },
+  {
+    "code": "211-UR880",
+    "productName": "Foley Catheter Insertion Tray (No Catheter)",
+    "suggestedFileName": "211-ur880.jpg",
+    "imageUrl": "/images/211-ur880.jpg"
+  },
+  {
+    "code": "DYND12588",
+    "productName": "Urinary Leg Bag with Fabric Back, Large",
+    "suggestedFileName": "dynd12588.jpg",
+    "imageUrl": "/images/dynd12588.jpg"
+  },
+  {
+    "code": "DYND12550",
+    "productName": "Vinyl Leg Bag Extension Tubing 18\"",
+    "suggestedFileName": "dynd12550.jpg",
+    "imageUrl": "/images/dynd12550.jpg"
+  },
+  {
+    "code": "MDS032273Z",
+    "productName": "Sterile Lubricating Jelly Foil Packets 2.7g",
+    "suggestedFileName": "mds032273z.jpg",
+    "imageUrl": "/images/mds032273z.jpg"
+  },
+  {
+    "code": "5110",
+    "productName": "Coloplast Freedom Male External Catheter 23mm",
+    "suggestedFileName": "5110.jpg",
+    "imageUrl": "/images/5110.jpg"
+  },
+  {
+    "code": "687-97525\\\nDYND12303",
+    "productName": "Hollister InView Male External Catheter 25mm",
+    "suggestedFileName": "687-97525-dynd12303.jpg",
+    "imageUrl": "/images/687-97525-dynd12303.jpg"
+  },
+  {
+    "code": "687-9208",
+    "productName": "Hollister InView Male External Catheter 32mm",
+    "suggestedFileName": "687-9208.jpg",
+    "imageUrl": "/images/687-9208.jpg"
+  },
+  {
+    "code": "DYND12302",
+    "productName": "Medline Exo-Cath External Male Catheter 30mm",
+    "suggestedFileName": "dynd12302.jpg",
+    "imageUrl": "/images/dynd12302.jpg"
+  },
+  {
+    "code": "DYND15207",
+    "productName": "Urinary Drainage Bag 2000mL",
+    "suggestedFileName": "dynd15207.jpg",
+    "imageUrl": "/images/dynd15207.jpg"
+  },
+  {
+    "code": "MDS087002LF",
+    "productName": "Elastic Tensor Bandage Latex Free 2\" x 5yd",
+    "suggestedFileName": "mds087002lf.jpg",
+    "imageUrl": "/images/mds087002lf.jpg"
+  },
+  {
+    "code": "MDS087004LF",
+    "productName": "Elastic Tensor Bandage Latex Free 4\" x 5yd",
+    "suggestedFileName": "mds087004lf.jpg",
+    "imageUrl": "/images/mds087004lf.jpg"
+  },
+  {
+    "code": "NON25650",
+    "productName": "Curad Fabric Adhesive Bandages 0.75\" x 3\"",
+    "suggestedFileName": "non25650.jpg",
+    "imageUrl": "/images/non25650.jpg"
+  },
+  {
+    "code": "PRM254192",
+    "productName": "Conform Stretch Gauze Bandage Non-Sterile 2\"",
+    "suggestedFileName": "prm254192.jpg",
+    "imageUrl": "/images/prm254192.jpg"
+  },
+  {
+    "code": "PRM254193",
+    "productName": "Conform Stretch Gauze Bandage Non-Sterile 3\"",
+    "suggestedFileName": "prm254193.jpg",
+    "imageUrl": "/images/prm254193.jpg"
+  },
+  {
+    "code": "211-S134CA-50",
+    "productName": "Sterile Conform Stretch Gauze Bandage 2\"",
+    "suggestedFileName": "211-s134ca-50.jpg",
+    "imageUrl": "/images/211-s134ca-50.jpg"
+  },
+  {
+    "code": "173-677401",
+    "productName": "Mesorb Highly Absorbent Exudate Dressing 10x20cm",
+    "suggestedFileName": "173-677401.jpg",
+    "imageUrl": "/images/173-677401.jpg"
+  },
+  {
+    "code": "211-D101108",
+    "productName": "Sterile Wound Dressing Tray with Plastic Forceps",
+    "suggestedFileName": "211-d101108.jpg",
+    "imageUrl": "/images/211-d101108.jpg"
+  },
+  {
+    "code": "211-052110",
+    "productName": "Non-Sterile 8-Ply Woven Gauze Sponges 10x10cm",
+    "suggestedFileName": "211-052110.jpg",
+    "imageUrl": "/images/211-052110.jpg"
+  },
+  {
+    "code": "211-052112\\211-052113",
+    "productName": "Non-Sterile 8-Ply Woven Gauze Sponges 5x5cm",
+    "suggestedFileName": "211-052112-211-052113.jpg",
+    "imageUrl": "/images/211-052112-211-052113.jpg"
+  },
+  {
+    "code": "211-052114",
+    "productName": "Non-Sterile 8-Ply Woven Gauze Sponges 7.5x7.5cm",
+    "suggestedFileName": "211-052114.jpg",
+    "imageUrl": "/images/211-052114.jpg"
+  },
+  {
+    "code": "NON21424",
+    "productName": "Sterile 12-Ply Non-Woven Gauze Sponges 10x10cm",
+    "suggestedFileName": "non21424.jpg",
+    "imageUrl": "/images/non21424.jpg"
+  },
+  {
+    "code": "211-A4440",
+    "productName": "Sterile 4-Ply Non-Woven Gauze Sponges 10x10cm",
+    "suggestedFileName": "211-a4440.jpg",
+    "imageUrl": "/images/211-a4440.jpg"
+  },
+  {
+    "code": "211-A2240",
+    "productName": "Sterile 4-Ply Non-Woven Gauze Sponges 5x5cm",
+    "suggestedFileName": "211-a2240.jpg",
+    "imageUrl": "/images/211-a2240.jpg"
+  },
+  {
+    "code": "127-7646007",
+    "productName": "Leukoplast Fabric Adhesive Bandages 2.2x7.2cm",
+    "suggestedFileName": "127-7646007.jpg",
+    "imageUrl": "/images/127-7646007.jpg"
+  },
+  {
+    "code": "355-2863",
+    "productName": "3M Medipore H Soft Cloth Tape 7.5cm x 9.1m",
+    "suggestedFileName": "355-2863.jpg",
+    "imageUrl": "/images/355-2863.jpg"
+  },
+  {
+    "code": "355-2864",
+    "productName": "3M Medipore Soft Cloth Tape on Liner 10x10cm",
+    "suggestedFileName": "355-2864.jpg",
+    "imageUrl": "/images/355-2864.jpg"
+  },
+  {
+    "code": "NON25700",
+    "productName": "Curad Non-Adherent Dressing Pads 2\" x 3\"",
+    "suggestedFileName": "non25700.jpg",
+    "imageUrl": "/images/non25700.jpg"
+  },
+  {
+    "code": "NON25720",
+    "productName": "Telfa Type Non-Adherent Dressing Pads 3\" x 8\"",
+    "suggestedFileName": "non25720.jpg",
+    "imageUrl": "/images/non25720.jpg"
+  },
+  {
+    "code": "211-018-600",
+    "productName": "Plastic Adhesive Bandage Strips 0.75\" x 3\"",
+    "suggestedFileName": "211-018-600.jpg",
+    "imageUrl": "/images/211-018-600.jpg"
+  },
+  {
+    "code": "355-16004",
+    "productName": "3M Tegaderm Transparent Film Roll 10cm x 10m",
+    "suggestedFileName": "355-16004.jpg",
+    "imageUrl": "/images/355-16004.jpg"
+  },
+  {
+    "code": "355-1530-1",
+    "productName": "3M Micropore Paper Surgical Tape White 1\"",
+    "suggestedFileName": "355-1530-1.jpg",
+    "imageUrl": "/images/355-1530-1.jpg"
+  },
+  {
+    "code": "355-1530-2",
+    "productName": "3M Micropore Paper Surgical Tape White 2\"",
+    "suggestedFileName": "355-1530-2.jpg",
+    "imageUrl": "/images/355-1530-2.jpg"
+  },
+  {
+    "code": "355-1530-0",
+    "productName": "3M Micropore Paper Surgical Tape White 0.5\"",
+    "suggestedFileName": "355-1530-0.jpg",
+    "imageUrl": "/images/355-1530-0.jpg"
+  },
+  {
+    "code": "355-1533-0",
+    "productName": "3M Micropore Surgical Tape Tan 0.5\"",
+    "suggestedFileName": "355-1533-0.jpg",
+    "imageUrl": "/images/355-1533-0.jpg"
+  },
+  {
+    "code": "355-1527-0",
+    "productName": "3M Transpore Clear Surgical Tape 0.5\"",
+    "suggestedFileName": "355-1527-0.jpg",
+    "imageUrl": "/images/355-1527-0.jpg"
+  },
+  {
+    "code": "355-1527-1",
+    "productName": "3M Transpore Clear Surgical Tape 1\"",
+    "suggestedFileName": "355-1527-1.jpg",
+    "imageUrl": "/images/355-1527-1.jpg"
+  },
+  {
+    "code": "355-1527-2",
+    "productName": "3M Transpore Clear Surgical Tape 2\"",
+    "suggestedFileName": "355-1527-2.jpg",
+    "imageUrl": "/images/355-1527-2.jpg"
+  },
+  {
+    "code": "601-T168000",
+    "productName": "0.9% Sodium Chloride Wound Irrigation Squeeze Bottle 100mL",
+    "suggestedFileName": "601-t168000.jpg",
+    "imageUrl": "/images/601-t168000.jpg"
+  },
+  {
+    "code": "EMZ111240",
+    "productName": "0.9% Sodium Chloride 10mL Pre-filled Flush Syringe",
+    "suggestedFileName": "emz111240.jpg",
+    "imageUrl": "/images/emz111240.jpg"
+  },
+  {
+    "code": "308-306573",
+    "productName": "BD PosiFlush SF Saline Syringe 3mL",
+    "suggestedFileName": "308-306573.jpg",
+    "imageUrl": "/images/308-306573.jpg"
+  },
+  {
+    "code": "200-69C",
+    "productName": "Addipak 0.9% Normal Saline 15mL Unit Dose",
+    "suggestedFileName": "200-69c.jpg",
+    "imageUrl": "/images/200-69c.jpg"
+  },
+  {
+    "code": "DYNJ03000",
+    "productName": "Standard Sterile Laceration Tray Kit",
+    "suggestedFileName": "dynj03000.jpg",
+    "imageUrl": "/images/dynj03000.jpg"
+  },
+  {
+    "code": "41FK14",
+    "productName": "Panbio COVID-19 Antigen Rapid Test Device",
+    "suggestedFileName": "41fk14.jpg",
+    "imageUrl": "/images/41fk14.jpg"
+  },
+  {
+    "code": "390036",
+    "productName": "Enteric Outbreak Sample Collection Collection Kit",
+    "suggestedFileName": "390036.jpg",
+    "imageUrl": "/images/390036.jpg"
+  },
+  {
+    "code": "365017",
+    "productName": "BD Vacutainer Plus Urine Preservative Tube 4.0mL",
+    "suggestedFileName": "365017.jpg",
+    "imageUrl": "/images/365017.jpg"
+  },
+  {
+    "code": "DIS028",
+    "productName": "Biohazard Specimen Transport Bags 6\"x9\"",
+    "suggestedFileName": "dis028.jpg",
+    "imageUrl": "/images/dis028.jpg"
+  },
+  {
+    "code": "GW-1237NP",
+    "productName": "Sterile Nasopharyngeal Collection Swabs 6-Inch",
+    "suggestedFileName": "gw-1237np.jpg",
+    "imageUrl": "/images/gw-1237np.jpg"
+  },
+  {
+    "code": "03008-11",
+    "productName": "Sterile Specimen Container with Orange Screw Cap 90mL",
+    "suggestedFileName": "03008-11.jpg",
+    "imageUrl": "/images/03008-11.jpg"
+  },
+  {
+    "code": "BOTT-EPT",
+    "productName": "FecalSwab Stool Collection and Transport System",
+    "suggestedFileName": "bott-ept.jpg",
+    "imageUrl": "/images/bott-ept.jpg"
+  },
+  {
+    "code": "M40/SWAB-CLEA-AMI01",
+    "productName": "M40 Transystem Amies Clear Gel Transport Swab",
+    "suggestedFileName": "m40-swab-clea-ami01.jpg",
+    "imageUrl": "/images/m40-swab-clea-ami01.jpg"
+  },
+  {
+    "code": "6528-1011-2",
+    "productName": "Apotex Acetaminophen Extra Strength 500mg Tablets",
+    "suggestedFileName": "6528-1011-2.jpg",
+    "imageUrl": "/images/6528-1011-2.jpg"
+  },
+  {
+    "code": "6528-1010-2",
+    "productName": "Teva Acetaminophen Regular Strength 325mg Tablets",
+    "suggestedFileName": "6528-1010-2.jpg",
+    "imageUrl": "/images/6528-1010-2.jpg"
+  },
+  {
+    "code": "6572-1717-2",
+    "productName": "Extra Strength Muscle & Joint Analgesic Heat Cream 100g",
+    "suggestedFileName": "6572-1717-2.jpg",
+    "imageUrl": "/images/6572-1717-2.jpg"
+  },
+  {
+    "code": "6554-1503-0",
+    "productName": "Alugel Aluminum Hydroxide Antacid Suspension 425mL",
+    "suggestedFileName": "6554-1503-0.jpg",
+    "imageUrl": "/images/6554-1503-0.jpg"
+  },
+  {
+    "code": "6554-1505-0",
+    "productName": "Milk of Magnesia Laxative/Antacid Oral Suspension 500mL",
+    "suggestedFileName": "6554-1505-0.jpg",
+    "imageUrl": "/images/6554-1505-0.jpg"
+  },
+  {
+    "code": "6554-1509-0",
+    "productName": "Almagel Antacid/Antiflatulent Suspension 350mL",
+    "suggestedFileName": "6554-1509-0.jpg",
+    "imageUrl": "/images/6554-1509-0.jpg"
+  },
+  {
+    "code": "6501-1006-0",
+    "productName": "Jamp Cyproheptadine HCl Antihistamine 4mg Tablets",
+    "suggestedFileName": "6501-1006-0.jpg",
+    "imageUrl": "/images/6501-1006-0.jpg"
+  },
+  {
+    "code": "6501-1008-2",
+    "productName": "Teva Chlorpheniramine Maleate 4mg Allergy Tablets",
+    "suggestedFileName": "6501-1008-2.jpg",
+    "imageUrl": "/images/6501-1008-2.jpg"
+  },
+  {
+    "code": "6557-1001-1",
+    "productName": "Dimenhydrinate 50mg Motion Sickness Tablets",
+    "suggestedFileName": "6557-1001-1.jpg",
+    "imageUrl": "/images/6557-1001-1.jpg"
+  },
+  {
+    "code": "6556-1401-0",
+    "productName": "Odan Bisacodyl Laxative 5mg Tablets",
+    "suggestedFileName": "6556-1401-0.jpg",
+    "imageUrl": "/images/6556-1401-0.jpg"
+  },
+  {
+    "code": "6556-1401-0-SUP",
+    "productName": "Dulcolax Bisacodyl 10mg Laxative Suppositories",
+    "suggestedFileName": "6556-1401-0-sup.jpg",
+    "imageUrl": "/images/6556-1401-0-sup.jpg"
+  },
+  {
+    "code": "6556-1402-0",
+    "productName": "Colace Glycerin Suppositories Adult 24-pk",
+    "suggestedFileName": "6556-1402-0.jpg",
+    "imageUrl": "/images/6556-1402-0.jpg"
+  },
+  {
+    "code": "6556-1901-3",
+    "productName": "Fleet Enema Mineral Oil/Saline Laxative",
+    "suggestedFileName": "6556-1901-3.jpg",
+    "imageUrl": "/images/6556-1901-3.jpg"
+  },
+  {
+    "code": "6556-1004-1",
+    "productName": "Sennosides Laxative Tablets 8.6mg (1000/btl)",
+    "suggestedFileName": "6556-1004-1.jpg",
+    "imageUrl": "/images/6556-1004-1.jpg"
+  },
+  {
+    "code": "6556-1004-1-100",
+    "productName": "Sennosides Laxative Tablets 8.6mg (100/btl)",
+    "suggestedFileName": "6556-1004-1-100.jpg",
+    "imageUrl": "/images/6556-1004-1-100.jpg"
+  },
+  {
+    "code": "6556-1605-0",
+    "productName": "Mucillium Psyllium Fiber Powder",
+    "suggestedFileName": "6556-1605-0.jpg",
+    "imageUrl": "/images/6556-1605-0.jpg"
+  },
+  {
+    "code": "6556-1104-0",
+    "productName": "Soflax Docusate Sodium Stool Softener 100mg",
+    "suggestedFileName": "6556-1104-0.jpg",
+    "imageUrl": "/images/6556-1104-0.jpg"
+  },
+  {
+    "code": "6556-1503-0",
+    "productName": "Cascara Sagrada Fluid Extract Laxative 500mL",
+    "suggestedFileName": "6556-1503-0.jpg",
+    "imageUrl": "/images/6556-1503-0.jpg"
+  },
+  {
+    "code": "6544-1504-1",
+    "productName": "Guaifenesin Expectorant Cough Syrup 250mL",
+    "suggestedFileName": "6544-1504-1.jpg",
+    "imageUrl": "/images/6544-1504-1.jpg"
+  },
+  {
+    "code": "6544-1508-1",
+    "productName": "Bronchophan Forte DM Cough Syrup 250mL",
+    "suggestedFileName": "6544-1508-1.jpg",
+    "imageUrl": "/images/6544-1508-1.jpg"
+  },
+  {
+    "code": "6572-1715-0",
+    "productName": "Life Brand Anti-Pruritic Calamine Lotion 250mL",
+    "suggestedFileName": "6572-1715-0.jpg",
+    "imageUrl": "/images/6572-1715-0.jpg"
+  },
+  {
+    "code": "6572-1730-0",
+    "productName": "Silicone 20% Protective Skin Barrier Cream",
+    "suggestedFileName": "6572-1730-0.jpg",
+    "imageUrl": "/images/6572-1730-0.jpg"
+  },
+  {
+    "code": "6572-0502-0",
+    "productName": "70% Isopropyl Rubbing Alcohol Antiseptic",
+    "suggestedFileName": "6572-0502-0.jpg",
+    "imageUrl": "/images/6572-0502-0.jpg"
+  },
+  {
+    "code": "6572-1713-1",
+    "productName": "White Petrolatum Skin Protectant Ointment Jelly",
+    "suggestedFileName": "6572-1713-1.jpg",
+    "imageUrl": "/images/6572-1713-1.jpg"
+  },
+  {
+    "code": "6572-1710-2",
+    "productName": "Zinc Oxide 15% Barrier Ointment Cream",
+    "suggestedFileName": "6572-1710-2.jpg",
+    "imageUrl": "/images/6572-1710-2.jpg"
+  },
+  {
+    "code": "6537-1102-0",
+    "productName": "Potassium Chloride Long Acting Capsules 600mg",
+    "suggestedFileName": "6537-1102-0.jpg",
+    "imageUrl": "/images/6537-1102-0.jpg"
+  },
+  {
+    "code": "6537-1004-0",
+    "productName": "Potassium Chloride Long Acting Tablets 600mg",
+    "suggestedFileName": "6537-1004-0.jpg",
+    "imageUrl": "/images/6537-1004-0.jpg"
+  },
+  {
+    "code": "6537-1505-0",
+    "productName": "Potassium Chloride Oral Solution 20 mEq/15mL",
+    "suggestedFileName": "6537-1505-0.jpg",
+    "imageUrl": "/images/6537-1505-0.jpg"
+  },
+  {
+    "code": "6572-1752-0",
+    "productName": "Anuzine Zinc Sulphate 0.5% Hemorrhoidal Ointment",
+    "suggestedFileName": "6572-1752-0.jpg",
+    "imageUrl": "/images/6572-1752-0.jpg"
+  },
+  {
+    "code": "6552-1803-0",
+    "productName": "Methylcellulose 0.5% Artificial Tears Lubricating Eyedrops",
+    "suggestedFileName": "6552-1803-0.jpg",
+    "imageUrl": "/images/6552-1803-0.jpg"
+  },
+  {
+    "code": "6552-1804-0",
+    "productName": "Methylcellulose 1% Artificial Tears Lubricating Eyedrops",
+    "suggestedFileName": "6552-1804-0.jpg",
+    "imageUrl": "/images/6552-1804-0.jpg"
+  },
+  {
+    "code": "DEX4-GLUC",
+    "productName": "Dex4 Fast Acting Glucose Tablets Berry 4g",
+    "suggestedFileName": "dex4-gluc.jpg",
+    "imageUrl": "/images/dex4-gluc.jpg"
+  },
+  {
+    "code": "LACT-667",
+    "productName": "Lactulose Oral Solution Unflavored 667mg/mL",
+    "suggestedFileName": "lact-667.jpg",
+    "imageUrl": "/images/lact-667.jpg"
+  }
+]
