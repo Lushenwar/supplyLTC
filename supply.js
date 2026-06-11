@@ -321,7 +321,7 @@ const INVENTORY = [
     "productName": "1mL Luer Lock Syringe Only Sterile",
     "manufacturer": "Medline",
     "suggestedStatus": "match",
-    "imageUrl": "/images/syr101010ld.jpg"
+    "imageUrl": ""
   },
   {
     "storage": "3W",
@@ -333,7 +333,8 @@ const INVENTORY = [
     "productName": "3mL Luer Lock Syringe Only Sterile",
     "manufacturer": "Medline",
     "suggestedStatus": "match",
-    "imageUrl": ""
+    "imageUrl": "https://www.henryschein.com/Products/1310968_US_front_01_600x600.jpg",
+    "imageFallback": "/images/syr103010.jpg"
   },
   {
     "storage": "3W",
@@ -753,7 +754,8 @@ const INVENTORY = [
     "productName": "Hollister InView Male External Catheter 25mm",
     "manufacturer": "Hollister",
     "suggestedStatus": "match",
-    "imageUrl": ""
+    "imageUrl": "https://www.aplus-medicalsupply.com/media/products/97529.jpg",
+    "imageFallback": "/images/687-97525-dynd12303.jpg"
   },
   {
     "storage": "3W",
