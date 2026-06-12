@@ -2312,6 +2312,7 @@ export default function SupplyMatch() {
       } else {
         // App-only item with no template row — append it so it still gets ordered.
         const it = inv[idx];
+        if (!it) return; // item was removed by admin since being added to this cart
         ws.addRow([it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""]);
       }
     });
