@@ -1,19 +1,23 @@
-import { put, list } from "@vercel/blob";
+import { put, list, del } from "@vercel/blob";
 
-// Shared inventory overrides (currently just stock counts), stored as a single
-// JSON blob so every kiosk reads the same admin-updated numbers on load.
-const BLOB_PATH = "inventory-overrides.json";
+// Shared inventory overrides (stock counts, hidden items, admin-added items),
+// stored as a JSON blob so every kiosk reads the same admin-updated data on load.
+//
+// Each save uploads a brand-new, uniquely-named blob rather than overwriting the
+// same one — overwriting a fixed-URL blob is subject to read-after-write
+// staleness (the old content can still be served for a bit), which made hides
+// and stock edits take "two saves" to show up. New blobs are immutable, so the
+// latest one (by uploadedAt) is always correct, and old ones are deleted after.
+const BLOB_PREFIX = "inventory-overrides/";
 const ADMIN_PASSCODE = "Sthaa123!";
 
 const EMPTY = { stock: {}, hidden: [], added: [] };
 
 async function readOverrides() {
-  const { blobs } = await list({ prefix: BLOB_PATH });
-  const match = blobs.find((b) => b.pathname === BLOB_PATH);
-  if (!match) return EMPTY;
-  // Bust CDN/fetch caches: overwriting a blob keeps the same URL, so without
-  // this a kiosk can keep getting the pre-save JSON for a while after a save.
-  const res = await fetch(`${match.url}?t=${Date.now()}`, { cache: "no-store" });
+  const { blobs } = await list({ prefix: BLOB_PREFIX });
+  if (!blobs.length) return EMPTY;
+  const latest = blobs.reduce((a, b) => (a.uploadedAt > b.uploadedAt ? a : b));
+  const res = await fetch(latest.url, { cache: "no-store" });
   if (!res.ok) return EMPTY;
   const data = await res.json();
   return { stock: data.stock || {}, hidden: data.hidden || [], added: data.added || [] };
@@ -40,13 +44,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing or invalid inventory data" });
     }
     try {
-      await put(BLOB_PATH, JSON.stringify({ stock, hidden, added }), {
+      const { blobs: old } = await list({ prefix: BLOB_PREFIX });
+      await put(`${BLOB_PREFIX}${Date.now()}.json`, JSON.stringify({ stock, hidden, added }), {
         access: "public",
         addRandomSuffix: false,
         contentType: "application/json",
-        allowOverwrite: true,
-        cacheControlMaxAge: 0,
       });
+      await Promise.all(old.map((b) => del(b.url)));
       return res.status(200).json({ ok: true });
     } catch (err) {
       return res.status(500).json({ error: err.message || "Failed to save" });
