@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search, Check, AlertTriangle, ExternalLink, Download,
   ChevronLeft, ImageOff, PackageSearch, Eraser,
-  ShoppingCart, Plus, Minus, Trash2, Printer, Save, FolderOpen, ClipboardCheck, Mail
+  ShoppingCart, Plus, Minus, Trash2, Printer, Save, FolderOpen, ClipboardCheck, Mail, Lock, Unlock
 } from "lucide-react";
 
 // PRE-ENRICHED INVENTORY WITH ZERO RUNTIME API COSTS
@@ -1893,6 +1893,10 @@ input,select,textarea{font-family:inherit}
 .savemsg.err{background:var(--red-soft);border-color:#E7C2C2;color:#7E3030}
 .subnote{font-size:11.5px;color:var(--faint);margin-top:8px}
 .miniflag{font-size:10.5px;font-weight:700;color:var(--teal-d);background:var(--teal-soft);border-radius:5px;padding:2px 6px;margin-left:6px}
+.adminbody{padding:24px}
+.adminpanel{max-width:640px}
+.adminpanel h2{font-size:20px;margin:0 0 10px}
+.adminpanel .sub{font-size:13px;color:var(--soft);margin-bottom:8px}
 
 @media (max-width:860px){
   .orderbody{flex-direction:column}
@@ -1935,6 +1939,11 @@ const ORDER_NAME_KEY = "supply-order-nurse";
 const cartKey = (wing) => "supply-order-cart-" + wing;
 const submittedKey = (wing) => "supply-order-submitted-" + wing;
 
+// Admin mode is a soft gate on the UI only — the real protection is that
+// /api/inventory's POST endpoint checks this same passcode server-side.
+const ADMIN_PASSCODE = "Sthaa123!";
+const ADMIN_SESSION_KEY = "supply-admin-session";
+
 function loadJSON(key, fallback) {
   try {
     const v = JSON.parse(localStorage.getItem(key));
@@ -1976,8 +1985,27 @@ export default function SupplyMatch() {
   const [urlStatus, setUrlStatus] = useState("idle");          // idle | checking | saved | error
   const [imgIdx, setImgIdx] = useState(0);                     // which image candidate is showing (for auto-fallback)
 
+  // ---- Admin mode state ----
+  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === "1");
+
+  function handleAdminClick() {
+    if (isAdmin) {
+      setIsAdmin(false);
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      if (mode === "admin") setMode("verify");
+      return;
+    }
+    const code = window.prompt("Enter admin passcode:");
+    if (code === ADMIN_PASSCODE) {
+      setIsAdmin(true);
+      sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    } else if (code !== null) {
+      window.alert("Incorrect passcode.");
+    }
+  }
+
   // ---- Order mode state ----
-  const [mode, setMode] = useState("verify"); // "verify" | "order"
+  const [mode, setMode] = useState("verify"); // "verify" | "order" | "admin"
   const [wing, setWing] = useState(() => loadJSON(ORDER_WING_KEY, ""));
   const [nurseName, setNurseName] = useState(() => loadJSON(ORDER_NAME_KEY, ""));
   const [cart, setCart] = useState(() => loadJSON(cartKey(loadJSON(ORDER_WING_KEY, "")), {})); // { invIdx: qty }
@@ -2434,22 +2462,32 @@ export default function SupplyMatch() {
           <div className="logo"><PackageSearch size={20} /></div>
           <div>
             <div className="title">Supply Match</div>
-            <div className="sub">{mode === "verify" ? "Browse items, check the picture, and manage product images" : "Build this wing's order, then save or print it"}</div>
+            <div className="sub">
+              {mode === "verify" ? "Browse items, check the picture, and manage product images"
+                : mode === "admin" ? "Admin — manage stock and inventory"
+                : "Build this wing's order, then save or print it"}
+            </div>
           </div>
         </div>
         <div className="topright">
           <div className="modetoggle">
             <button className={mode === "verify" ? "on" : ""} onClick={() => setMode("verify")}>Items</button>
             <button className={mode === "order" ? "on" : ""} onClick={() => setMode("order")}>Order</button>
+            {isAdmin && (
+              <button className={mode === "admin" ? "on" : ""} onClick={() => setMode("admin")}>Admin</button>
+            )}
           </div>
           {mode === "verify" ? (
             <button className="btn" onClick={exportCsv}><Download size={15} /> Export</button>
-          ) : (
+          ) : mode === "order" ? (
             <div className="progress">
               <div>Unit <b>{wing || "—"}</b> · <b>{cartLines.length}</b> item{cartLines.length === 1 ? "" : "s"}</div>
               <div style={{ marginTop: 2 }}>{cartTotalUnits} unit{cartTotalUnits === 1 ? "" : "s"} to order</div>
             </div>
-          )}
+          ) : null}
+          <button className="btn" title={isAdmin ? "Exit admin mode" : "Admin login"} onClick={handleAdminClick}>
+            {isAdmin ? <Unlock size={15} /> : <Lock size={15} />} {isAdmin ? "Exit admin" : "Admin"}
+          </button>
         </div>
       </header>
 
@@ -2744,6 +2782,18 @@ export default function SupplyMatch() {
             </div>
           </div>
         </aside>
+      </div>
+      )}
+
+      {mode === "admin" && (
+      <div className="body adminbody">
+        <section className="adminpanel">
+          <h2>Admin</h2>
+          <p className="sub">
+            Logged in. {Object.keys(stockOverrides).length} stock override{Object.keys(stockOverrides).length === 1 ? "" : "s"} currently synced from the shared inventory file.
+          </p>
+          <p className="sub">Stock editing, item add/remove, and the monthly Excel upload will go here next.</p>
+        </section>
       </div>
       )}
     </div>
