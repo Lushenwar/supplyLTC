@@ -2305,7 +2305,15 @@ export default function SupplyMatch() {
   // Build the filled .xlsx from the template, writing quantities into the chosen
   // wing's "To order" (column H). Returns { blob, filename }.
   async function buildOrderFile() {
-    const ExcelJS = (await import("exceljs")).default;
+    let ExcelJS;
+    try {
+      ExcelJS = (await import("exceljs")).default;
+    } catch (err) {
+      // A new version of the app was deployed since this page was loaded, so the
+      // browser is trying to fetch a JS chunk that no longer exists. Reloading
+      // picks up the current build.
+      throw new Error("The app was updated since this page loaded. Please refresh the page and try again.");
+    }
     const wb = new ExcelJS.Workbook();
     const buf = await (await fetch(TEMPLATE_PATH)).arrayBuffer();
     await wb.xlsx.load(buf);
