@@ -2316,6 +2316,16 @@ export default function SupplyMatch() {
       }
     });
 
+    // Admin-hidden items still have a pre-printed row in the template — blank
+    // it out so discontinued items don't show up on the generated order form.
+    hiddenSet.forEach((idx) => {
+      if (idx <= TEMPLATE_LAST_INDEX) {
+        ws.getRow(idx + TEMPLATE_FIRST_ROW).eachCell({ includeEmpty: true }, (cell) => {
+          cell.value = null;
+        });
+      }
+    });
+
     // Keep only this wing's tab so the file isn't the whole 11-sheet workbook.
     wb.worksheets.slice().forEach((s) => {
       if (s.name !== wing) wb.removeWorksheet(s.id);
