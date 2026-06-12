@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search, Check, AlertTriangle, ExternalLink, Download,
   ChevronLeft, ImageOff, PackageSearch, Eraser,
-  ShoppingCart, Plus, Minus, Trash2, Printer, Save, FolderOpen, ClipboardCheck
+  ShoppingCart, Plus, Minus, Trash2, Printer, Save, FolderOpen, ClipboardCheck, Mail
 } from "lucide-react";
 
 // PRE-ENRICHED INVENTORY WITH ZERO RUNTIME API COSTS
@@ -2279,6 +2279,55 @@ export default function SupplyMatch() {
     }
   }
 
+  // Email the order to the admin (with the .xlsx attached) via the /api/send-order
+  // serverless function, in case the nurse forgets to save it into the shared folder.
+  async function sendToAdmin() {
+    if (!cartLines.length) {
+      setSaveStatus("error");
+      setSaveMsg("Add at least one item before sending.");
+      return;
+    }
+    if (!ensureOrderFieldsFilled()) return;
+    setSaveStatus("working");
+    setSaveMsg("Sending order to admin…");
+    try {
+      const { blob, filename } = await buildOrderFile();
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const fileBase64 = btoa(binary);
+
+      const items = cartLines
+        .map((l) => (l.it.code || "—") + "  x" + l.qty + "  - " + l.it.desc)
+        .join("\n");
+
+      const res = await fetch("/api/send-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wing,
+          nurseName,
+          date: new Date().toLocaleDateString(),
+          itemCount: cartLines.length,
+          items,
+          filename,
+          fileBase64,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Server error");
+      }
+      recordSubmitted();
+      setSaveStatus("saved");
+      setSaveMsg("Order emailed to admin.");
+    } catch (err) {
+      setSaveStatus("error");
+      setSaveMsg("Couldn't send the order: " + (err && err.message ? err.message : err));
+    }
+  }
+
   // Print a clean order summary (HTML) — reliable across browsers, instant.
   function printOrder() {
     if (!cartLines.length) {
@@ -2646,6 +2695,9 @@ export default function SupplyMatch() {
             <div className="cart-actions">
               <button className="btn primary" disabled={!cartLines.length || saveStatus === "working"} onClick={generateAndSave}>
                 <Save size={15} /> Generate &amp; save to folder
+              </button>
+              <button className="btn" disabled={!cartLines.length || saveStatus === "working"} onClick={sendToAdmin}>
+                <Mail size={15} /> Send to admin
               </button>
               <div className="row2">
                 <button className="btn" disabled={!cartLines.length || saveStatus === "working"} onClick={downloadOnly}>
