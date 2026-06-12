@@ -2312,6 +2312,7 @@ export default function SupplyMatch() {
     const ws = wb.getWorksheet(wing);
     if (!ws) throw new Error("Wing tab '" + wing + "' not found in template.");
 
+    const appendItems = [];
     Object.entries(cart).forEach(([idxStr, qty]) => {
       const idx = Number(idxStr);
       const q = Number(qty);
@@ -2319,22 +2320,32 @@ export default function SupplyMatch() {
       if (idx <= TEMPLATE_LAST_INDEX) {
         ws.getCell("H" + (idx + TEMPLATE_FIRST_ROW)).value = q;
       } else {
-        // App-only item with no template row — append it so it still gets ordered.
+        // App-only item with no template row — queue it to be appended below.
         const it = inv[idx];
         if (!it) return; // item was removed by admin since being added to this cart
-        ws.addRow([it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""]);
+        appendItems.push({ it, q });
       }
     });
 
-    // Admin-hidden items still have a pre-printed row in the template — blank
-    // it out so discontinued items don't show up on the generated order form.
-    hiddenSet.forEach((idx) => {
-      if (idx <= TEMPLATE_LAST_INDEX) {
-        ws.getRow(idx + TEMPLATE_FIRST_ROW).eachCell({ includeEmpty: true }, (cell) => {
-          cell.value = null;
-        });
-      }
-    });
+    // Admin-hidden items still have a pre-printed row in the template — remove
+    // the whole row (bottom-up so earlier row numbers stay valid) so discontinued
+    // items don't leave gaps on the generated order form.
+    Array.from(hiddenSet)
+      .filter((idx) => idx <= TEMPLATE_LAST_INDEX)
+      .sort((a, b) => b - a)
+      .forEach((idx) => ws.spliceRows(idx + TEMPLATE_FIRST_ROW, 1));
+
+    // Append admin-added items in the cart as new rows, copying the styling
+    // of the last item row so they match the rest of the list.
+    if (appendItems.length) {
+      const styleRow = ws.getRow(ws.actualRowCount);
+      const styles = [];
+      for (let c = 1; c <= 9; c++) styles.push(styleRow.getCell(c).style);
+      appendItems.forEach(({ it, q }) => {
+        const row = ws.addRow([it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""]);
+        for (let c = 1; c <= 9; c++) row.getCell(c).style = styles[c - 1];
+      });
+    }
 
     // Keep only this wing's tab so the file isn't the whole 11-sheet workbook.
     wb.worksheets.slice().forEach((s) => {
