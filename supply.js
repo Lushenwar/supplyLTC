@@ -1988,6 +1988,21 @@ export default function SupplyMatch() {
   const [saveMsg, setSaveMsg] = useState("");
   const [showFieldErrors, setShowFieldErrors] = useState(false); // true once the nurse tries to save/print with missing fields
 
+  // Stock overrides synced from the admin (via /api/inventory), keyed by
+  // INVENTORY array index. Fetched once on load so all kiosks pick up the
+  // latest admin-updated stock counts without changing item order/positions.
+  const [stockOverrides, setStockOverrides] = useState({});
+  useEffect(() => {
+    fetch("/api/inventory")
+      .then((r) => (r.ok ? r.json() : { stock: {} }))
+      .then((data) => setStockOverrides(data.stock || {}))
+      .catch(() => {});
+  }, []);
+  const inv = useMemo(
+    () => INVENTORY.map((it, i) => (stockOverrides[i] != null ? { ...it, stock: stockOverrides[i] } : it)),
+    [stockOverrides]
+  );
+
   const storages = useMemo(
     () => ["All", ...Array.from(new Set(INVENTORY.map((i) => i.storage).filter(Boolean)))],
     []
@@ -1999,23 +2014,23 @@ export default function SupplyMatch() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return INVENTORY.map((it, idx) => [idx, it]).filter(([, it]) => {
+    return inv.map((it, idx) => [idx, it]).filter(([, it]) => {
       if (storageF !== "All" && it.storage !== storageF) return false;
       if (catF !== "All" && it.category !== catF) return false;
       if (q && !((it.code || "").toLowerCase().includes(q) || (it.desc || "").toLowerCase().includes(q)))
         return false;
       return true;
     });
-  }, [query, storageF, catF]);
+  }, [query, storageF, catF, inv]);
 
   // ---- Order-mode derived data ----
   const cartLines = useMemo(
     () =>
       Object.entries(cart)
-        .map(([idx, qty]) => ({ idx: Number(idx), qty: Number(qty), it: INVENTORY[Number(idx)] }))
+        .map(([idx, qty]) => ({ idx: Number(idx), qty: Number(qty), it: inv[Number(idx)] }))
         .filter((l) => l.it && l.qty > 0)
         .sort((a, b) => a.idx - b.idx),
-    [cart]
+    [cart, inv]
   );
   const cartTotalUnits = useMemo(() => cartLines.reduce((s, l) => s + l.qty, 0), [cartLines]);
   const orderCategories = useMemo(
@@ -2024,13 +2039,13 @@ export default function SupplyMatch() {
   );
   const orderFiltered = useMemo(() => {
     const q = orderQuery.trim().toLowerCase();
-    return INVENTORY.map((it, idx) => [idx, it]).filter(([, it]) => {
+    return inv.map((it, idx) => [idx, it]).filter(([, it]) => {
       if (orderCatF !== "All" && it.category !== orderCatF) return false;
       if (q && !((it.code || "").toLowerCase().includes(q) || (it.desc || "").toLowerCase().includes(q)))
         return false;
       return true;
     });
-  }, [orderQuery, orderCatF]);
+  }, [orderQuery, orderCatF, inv]);
 
   // Persist overrides to localStorage whenever they change.
   useEffect(() => {
@@ -2160,7 +2175,7 @@ export default function SupplyMatch() {
         ws.getCell("H" + (idx + TEMPLATE_FIRST_ROW)).value = q;
       } else {
         // App-only item with no template row — append it so it still gets ordered.
-        const it = INVENTORY[idx];
+        const it = inv[idx];
         ws.addRow([it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""]);
       }
     });
@@ -2367,7 +2382,7 @@ export default function SupplyMatch() {
     w.print();
   }
 
-  const item = selIdx === null ? null : INVENTORY[selIdx];
+  const item = selIdx === null ? null : inv[selIdx];
 
   function selectItem(idx) {
     setSelIdx(idx);
@@ -2382,7 +2397,7 @@ export default function SupplyMatch() {
       "Storage", "Category", "Code", "Description", "Unit", "Stock",
       "Product", "Manufacturer", "Image URL",
     ];
-    const lines = INVENTORY.map((it, i) => {
+    const lines = inv.map((it, i) => {
       const imgUrl = manualUrls[i] || it.imageUrl || "";
       return [
         it.storage, it.category, it.code, it.desc, it.unit, it.stock,
