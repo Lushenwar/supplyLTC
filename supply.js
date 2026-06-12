@@ -1894,25 +1894,34 @@ input,select,textarea{font-family:inherit}
 .subnote{font-size:11.5px;color:var(--faint);margin-top:8px}
 .miniflag{font-size:10.5px;font-weight:700;color:var(--teal-d);background:var(--teal-soft);border-radius:5px;padding:2px 6px;margin-left:6px}
 .adminbody{padding:24px;overflow:auto}
-.adminpanel{max-width:900px}
+.adminpanel{max-width:1280px}
 .adminpanel h2{font-size:20px;margin:0 0 10px}
-.adminpanel h3{font-size:15px;margin:22px 0 10px}
+.adminpanel h3{font-size:15px;margin:0 0 10px}
 .adminpanel .sub{font-size:13px;color:var(--soft);margin-bottom:8px}
 .admin-savebar{display:flex;align-items:center;gap:12px;margin:14px 0;flex-wrap:wrap}
 .admin-savebar .savemsg{margin:0}
-.admin-search{margin-bottom:10px;max-width:360px}
+.admin-main{display:flex;gap:24px;align-items:flex-start}
+.admin-table-col{flex:1;min-width:0}
+.admin-side-col{width:300px;flex-shrink:0}
+.admin-search{margin-bottom:10px}
 .admintable{border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .admintable-head,.admintable-row{display:grid;grid-template-columns:1.2fr 3fr 0.8fr 0.8fr 0.9fr;gap:10px;align-items:center;padding:8px 12px}
 .admintable-head{background:var(--line2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
-.admintable-body{max-height:480px;overflow:auto}
+.admintable-body{max-height:calc(100vh - 320px);overflow:auto}
 .admintable-row{border-top:1px solid var(--line2);font-size:12.5px}
 .admintable-row.hidden-row{opacity:.45}
 .atc-code{font-family:var(--mono);font-weight:600}
 .atc-desc{color:var(--soft)}
 .atc-stock{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:12.5px}
-.admin-newitem{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:760px}
+.admin-newitem{display:grid;grid-template-columns:1fr;gap:8px}
 .admin-newitem input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
-.admin-newitem button{grid-column:span 1;justify-content:center}
+.admin-newitem button{justify-content:center}
+
+@media (max-width:960px){
+  .admin-main{flex-direction:column}
+  .admin-side-col{width:100%}
+  .admintable-body{max-height:400px}
+}
 
 @media (max-width:860px){
   .orderbody{flex-direction:column}
@@ -2924,64 +2933,70 @@ export default function SupplyMatch() {
             )}
           </div>
 
-          <div className="searchwrap admin-search">
-            <Search size={17} />
-            <input
-              placeholder="Search code or description"
-              value={adminQuery}
-              onChange={(e) => setAdminQuery(e.target.value)}
-            />
-          </div>
+          <div className="admin-main">
+            <div className="admin-table-col">
+              <div className="searchwrap admin-search">
+                <Search size={17} />
+                <input
+                  placeholder="Search code or description"
+                  value={adminQuery}
+                  onChange={(e) => setAdminQuery(e.target.value)}
+                />
+              </div>
 
-          <div className="admintable">
-            <div className="admintable-head">
-              <div>Code</div>
-              <div>Description</div>
-              <div>Storage</div>
-              <div>Stock</div>
-              <div></div>
-            </div>
-            <div className="admintable-body">
-              {adminFiltered.map(([idx, it]) => (
-                <div key={idx} className={"admintable-row" + (adminHidden.has(idx) ? " hidden-row" : "")}>
-                  <div className="atc-code">{it.code || "— no code —"}</div>
-                  <div className="atc-desc">{it.desc}</div>
-                  <div className="atc-storage">{it.storage}</div>
-                  <div>
-                    <input
-                      className="atc-stock"
-                      value={adminStockEdits[idx] != null ? adminStockEdits[idx] : (it.stock || "")}
-                      onChange={(e) => setAdminStock(idx, e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    {idx < INVENTORY.length ? (
-                      <button className="btn" onClick={() => toggleAdminHidden(idx)}>
-                        {adminHidden.has(idx) ? "Unhide" : "Hide"}
-                      </button>
-                    ) : (
-                      <button className="btn danger" onClick={() => removeAddedItem(idx - INVENTORY.length)}>
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
+              <div className="admintable">
+                <div className="admintable-head">
+                  <div>Code</div>
+                  <div>Description</div>
+                  <div>Storage</div>
+                  <div>Stock</div>
+                  <div></div>
                 </div>
-              ))}
+                <div className="admintable-body">
+                  {adminFiltered.map(([idx, it]) => (
+                    <div key={idx} className={"admintable-row" + (adminHidden.has(idx) ? " hidden-row" : "")}>
+                      <div className="atc-code">{it.code || "— no code —"}</div>
+                      <div className="atc-desc">{it.desc}</div>
+                      <div className="atc-storage">{it.storage}</div>
+                      <div>
+                        <input
+                          className="atc-stock"
+                          value={adminStockEdits[idx] != null ? adminStockEdits[idx] : (it.stock || "")}
+                          onChange={(e) => setAdminStock(idx, e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        {idx < INVENTORY.length ? (
+                          <button className="btn" onClick={() => toggleAdminHidden(idx)}>
+                            {adminHidden.has(idx) ? "Unhide" : "Hide"}
+                          </button>
+                        ) : (
+                          <button className="btn danger" onClick={() => removeAddedItem(idx - INVENTORY.length)}>
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <h3>Add a new item</h3>
-          <div className="admin-newitem">
-            <input placeholder="Code" value={adminNewItem.code} onChange={(e) => setAdminNewItem((p) => ({ ...p, code: e.target.value }))} />
-            <input placeholder="Description" value={adminNewItem.desc} onChange={(e) => setAdminNewItem((p) => ({ ...p, desc: e.target.value }))} />
-            <input placeholder="Storage (e.g. 7W)" value={adminNewItem.storage} onChange={(e) => setAdminNewItem((p) => ({ ...p, storage: e.target.value }))} />
-            <input placeholder="Category" value={adminNewItem.category} onChange={(e) => setAdminNewItem((p) => ({ ...p, category: e.target.value }))} />
-            <input placeholder="Unit (e.g. EA)" value={adminNewItem.unit} onChange={(e) => setAdminNewItem((p) => ({ ...p, unit: e.target.value }))} />
-            <input placeholder="Stock" value={adminNewItem.stock} onChange={(e) => setAdminNewItem((p) => ({ ...p, stock: e.target.value }))} />
-            <input placeholder="Product name" value={adminNewItem.productName} onChange={(e) => setAdminNewItem((p) => ({ ...p, productName: e.target.value }))} />
-            <input placeholder="Manufacturer" value={adminNewItem.manufacturer} onChange={(e) => setAdminNewItem((p) => ({ ...p, manufacturer: e.target.value }))} />
-            <input placeholder="Image URL (optional)" value={adminNewItem.imageUrl} onChange={(e) => setAdminNewItem((p) => ({ ...p, imageUrl: e.target.value }))} />
-            <button className="btn" onClick={addNewItem}><Plus size={15} /> Add item</button>
+            <div className="admin-side-col">
+              <h3>Add a new item</h3>
+              <div className="admin-newitem">
+                <input placeholder="Code" value={adminNewItem.code} onChange={(e) => setAdminNewItem((p) => ({ ...p, code: e.target.value }))} />
+                <input placeholder="Description" value={adminNewItem.desc} onChange={(e) => setAdminNewItem((p) => ({ ...p, desc: e.target.value }))} />
+                <input placeholder="Storage (e.g. 7W)" value={adminNewItem.storage} onChange={(e) => setAdminNewItem((p) => ({ ...p, storage: e.target.value }))} />
+                <input placeholder="Category" value={adminNewItem.category} onChange={(e) => setAdminNewItem((p) => ({ ...p, category: e.target.value }))} />
+                <input placeholder="Unit (e.g. EA)" value={adminNewItem.unit} onChange={(e) => setAdminNewItem((p) => ({ ...p, unit: e.target.value }))} />
+                <input placeholder="Stock" value={adminNewItem.stock} onChange={(e) => setAdminNewItem((p) => ({ ...p, stock: e.target.value }))} />
+                <input placeholder="Product name" value={adminNewItem.productName} onChange={(e) => setAdminNewItem((p) => ({ ...p, productName: e.target.value }))} />
+                <input placeholder="Manufacturer" value={adminNewItem.manufacturer} onChange={(e) => setAdminNewItem((p) => ({ ...p, manufacturer: e.target.value }))} />
+                <input placeholder="Image URL (optional)" value={adminNewItem.imageUrl} onChange={(e) => setAdminNewItem((p) => ({ ...p, imageUrl: e.target.value }))} />
+                <button className="btn" onClick={addNewItem}><Plus size={15} /> Add item</button>
+              </div>
+            </div>
           </div>
         </section>
       </div>
