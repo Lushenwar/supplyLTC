@@ -1875,6 +1875,8 @@ input,select,textarea{font-family:inherit}
 .orderfields label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:4px}
 .orderfields select,.orderfields input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);background:var(--surface)}
 .orderfields select:focus,.orderfields input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+.orderfields .field-err select,.orderfields .field-err input{border-color:#D9534F}
+.orderfields .field-msg{font-size:11px;color:#B33;margin-top:4px}
 .cartlist{flex:1;overflow:auto;min-height:0}
 .cartitem{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line2)}
 .cartitem .ci-main{min-width:0;flex:1}
@@ -1976,14 +1978,15 @@ export default function SupplyMatch() {
 
   // ---- Order mode state ----
   const [mode, setMode] = useState("verify"); // "verify" | "order"
-  const [wing, setWing] = useState(() => loadJSON(ORDER_WING_KEY, WINGS[0]));
+  const [wing, setWing] = useState(() => loadJSON(ORDER_WING_KEY, ""));
   const [nurseName, setNurseName] = useState(() => loadJSON(ORDER_NAME_KEY, ""));
-  const [cart, setCart] = useState(() => loadJSON(cartKey(loadJSON(ORDER_WING_KEY, WINGS[0])), {})); // { invIdx: qty }
-  const [lastSubmitted, setLastSubmitted] = useState(() => loadJSON(submittedKey(loadJSON(ORDER_WING_KEY, WINGS[0])), null));
+  const [cart, setCart] = useState(() => loadJSON(cartKey(loadJSON(ORDER_WING_KEY, "")), {})); // { invIdx: qty }
+  const [lastSubmitted, setLastSubmitted] = useState(() => loadJSON(submittedKey(loadJSON(ORDER_WING_KEY, "")), null));
   const [orderQuery, setOrderQuery] = useState("");
   const [orderCatF, setOrderCatF] = useState("All");
   const [saveStatus, setSaveStatus] = useState(""); // "", "working", "saved", "downloaded", "error"
   const [saveMsg, setSaveMsg] = useState("");
+  const [showFieldErrors, setShowFieldErrors] = useState(false); // true once the nurse tries to save/print with missing fields
 
   const storages = useMemo(
     () => ["All", ...Array.from(new Set(INVENTORY.map((i) => i.storage).filter(Boolean)))],
@@ -2129,6 +2132,16 @@ export default function SupplyMatch() {
     setSaveMsg("");
   }
 
+  // Wing and nurse name are required before generating/saving/printing an order.
+  // Returns true if both are filled; otherwise flags the fields and shows an error.
+  function ensureOrderFieldsFilled() {
+    if (wing && nurseName.trim()) return true;
+    setShowFieldErrors(true);
+    setSaveStatus("error");
+    setSaveMsg("Please select a wing and enter your name before continuing.");
+    return false;
+  }
+
   // Build the filled .xlsx from the template, writing quantities into the chosen
   // wing's "To order" (column H). Returns { blob, filename }.
   async function buildOrderFile() {
@@ -2200,6 +2213,7 @@ export default function SupplyMatch() {
       setSaveMsg("Add at least one item before saving.");
       return;
     }
+    if (!ensureOrderFieldsFilled()) return;
     setSaveStatus("working");
     setSaveMsg("Building the order sheet…");
     try {
@@ -2250,6 +2264,7 @@ export default function SupplyMatch() {
       setSaveMsg("Add at least one item first.");
       return;
     }
+    if (!ensureOrderFieldsFilled()) return;
     setSaveStatus("working");
     setSaveMsg("Building the order sheet…");
     try {
@@ -2271,6 +2286,7 @@ export default function SupplyMatch() {
       setSaveMsg("Add at least one item before printing.");
       return;
     }
+    if (!ensureOrderFieldsFilled()) return;
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
     const rows = cartLines
       .map(
@@ -2366,7 +2382,7 @@ export default function SupplyMatch() {
             <button className="btn" onClick={exportCsv}><Download size={15} /> Export</button>
           ) : (
             <div className="progress">
-              <div>Unit <b>{wing}</b> · <b>{cartLines.length}</b> item{cartLines.length === 1 ? "" : "s"}</div>
+              <div>Unit <b>{wing || "—"}</b> · <b>{cartLines.length}</b> item{cartLines.length === 1 ? "" : "s"}</div>
               <div style={{ marginTop: 2 }}>{cartTotalUnits} unit{cartTotalUnits === 1 ? "" : "s"} to order</div>
             </div>
           )}
@@ -2580,25 +2596,28 @@ export default function SupplyMatch() {
           </div>
 
           <div className="orderfields">
-            <div>
-              <label>Wing / Unit</label>
-              <select value={wing} onChange={(e) => setWing(e.target.value)}>
+            <div className={showFieldErrors && !wing ? "field-err" : ""}>
+              <label>Wing / Unit *</label>
+              <select value={wing} onChange={(e) => { setWing(e.target.value); setShowFieldErrors(false); }}>
+                <option value="" disabled hidden>Select wing…</option>
                 {WINGS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
+              {showFieldErrors && !wing && <div className="field-msg">Please select a wing.</div>}
             </div>
-            <div>
-              <label>Ordered by</label>
+            <div className={showFieldErrors && !nurseName.trim() ? "field-err" : ""}>
+              <label>Ordered by *</label>
               <input
                 placeholder="Your name"
                 value={nurseName}
-                onChange={(e) => setNurseName(e.target.value)}
+                onChange={(e) => { setNurseName(e.target.value); setShowFieldErrors(false); }}
               />
+              {showFieldErrors && !nurseName.trim() && <div className="field-msg">Please enter your name.</div>}
             </div>
           </div>
 
           <div className="cartlist">
             {cartLines.length === 0 ? (
-              <div className="cart-empty">No items yet. Use <b>Add</b> on the left to build {wing}'s order.</div>
+              <div className="cart-empty">No items yet. Use <b>Add</b> on the left to build {wing || "this wing"}'s order.</div>
             ) : (
               cartLines.map((l) => (
                 <div key={l.idx} className="cartitem">
