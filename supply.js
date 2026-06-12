@@ -2050,7 +2050,7 @@ export default function SupplyMatch() {
   const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [] });
   const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
   const refreshOverrides = () =>
-    fetch("/api/inventory")
+    fetch("/api/inventory", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [] }))
       .then((data) => setOverrides({ stock: data.stock || {}, hidden: data.hidden || [], added: data.added || [] }))
       .catch(() => {});

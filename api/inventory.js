@@ -11,13 +11,17 @@ async function readOverrides() {
   const { blobs } = await list({ prefix: BLOB_PATH });
   const match = blobs.find((b) => b.pathname === BLOB_PATH);
   if (!match) return EMPTY;
-  const res = await fetch(match.url);
+  // Bust CDN/fetch caches: overwriting a blob keeps the same URL, so without
+  // this a kiosk can keep getting the pre-save JSON for a while after a save.
+  const res = await fetch(`${match.url}?t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) return EMPTY;
   const data = await res.json();
   return { stock: data.stock || {}, hidden: data.hidden || [], added: data.added || [] };
 }
 
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
   if (req.method === "GET") {
     try {
       const data = await readOverrides();
@@ -41,6 +45,7 @@ export default async function handler(req, res) {
         addRandomSuffix: false,
         contentType: "application/json",
         allowOverwrite: true,
+        cacheControlMaxAge: 0,
       });
       return res.status(200).json({ ok: true });
     } catch (err) {
