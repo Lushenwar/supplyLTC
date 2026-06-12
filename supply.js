@@ -1893,10 +1893,26 @@ input,select,textarea{font-family:inherit}
 .savemsg.err{background:var(--red-soft);border-color:#E7C2C2;color:#7E3030}
 .subnote{font-size:11.5px;color:var(--faint);margin-top:8px}
 .miniflag{font-size:10.5px;font-weight:700;color:var(--teal-d);background:var(--teal-soft);border-radius:5px;padding:2px 6px;margin-left:6px}
-.adminbody{padding:24px}
-.adminpanel{max-width:640px}
+.adminbody{padding:24px;overflow:auto}
+.adminpanel{max-width:900px}
 .adminpanel h2{font-size:20px;margin:0 0 10px}
+.adminpanel h3{font-size:15px;margin:22px 0 10px}
 .adminpanel .sub{font-size:13px;color:var(--soft);margin-bottom:8px}
+.admin-savebar{display:flex;align-items:center;gap:12px;margin:14px 0;flex-wrap:wrap}
+.admin-savebar .savemsg{margin:0}
+.admin-search{margin-bottom:10px;max-width:360px}
+.admintable{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.admintable-head,.admintable-row{display:grid;grid-template-columns:1.2fr 3fr 0.8fr 0.8fr 0.9fr;gap:10px;align-items:center;padding:8px 12px}
+.admintable-head{background:var(--line2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+.admintable-body{max-height:480px;overflow:auto}
+.admintable-row{border-top:1px solid var(--line2);font-size:12.5px}
+.admintable-row.hidden-row{opacity:.45}
+.atc-code{font-family:var(--mono);font-weight:600}
+.atc-desc{color:var(--soft)}
+.atc-stock{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:12.5px}
+.admin-newitem{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:760px}
+.admin-newitem input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+.admin-newitem button{grid-column:span 1;justify-content:center}
 
 @media (max-width:860px){
   .orderbody{flex-direction:column}
@@ -1986,11 +2002,12 @@ export default function SupplyMatch() {
   const [imgIdx, setImgIdx] = useState(0);                     // which image candidate is showing (for auto-fallback)
 
   // ---- Admin mode state ----
-  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === "1");
+  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === ADMIN_PASSCODE);
 
   function handleAdminClick() {
     if (isAdmin) {
       setIsAdmin(false);
+      setAdminPasscode("");
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
       if (mode === "admin") setMode("verify");
       return;
@@ -1998,7 +2015,8 @@ export default function SupplyMatch() {
     const code = window.prompt("Enter admin passcode:");
     if (code === ADMIN_PASSCODE) {
       setIsAdmin(true);
-      sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+      setAdminPasscode(code);
+      sessionStorage.setItem(ADMIN_SESSION_KEY, code);
     } else if (code !== null) {
       window.alert("Incorrect passcode.");
     }
@@ -2016,40 +2034,129 @@ export default function SupplyMatch() {
   const [saveMsg, setSaveMsg] = useState("");
   const [showFieldErrors, setShowFieldErrors] = useState(false); // true once the nurse tries to save/print with missing fields
 
-  // Stock overrides synced from the admin (via /api/inventory), keyed by
-  // INVENTORY array index. Fetched once on load so all kiosks pick up the
-  // latest admin-updated stock counts without changing item order/positions.
-  const [stockOverrides, setStockOverrides] = useState({});
-  useEffect(() => {
+  // Inventory overrides synced from the admin (via /api/inventory): stock counts
+  // keyed by INVENTORY array index (so item order/template-row mapping never
+  // shifts), a list of hidden indices (soft "remove"), and admin-added items
+  // (appended after INVENTORY, same as the existing app-only extra items).
+  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [] });
+  const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
+  const refreshOverrides = () =>
     fetch("/api/inventory")
-      .then((r) => (r.ok ? r.json() : { stock: {} }))
-      .then((data) => setStockOverrides(data.stock || {}))
+      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [] }))
+      .then((data) => setOverrides({ stock: data.stock || {}, hidden: data.hidden || [], added: data.added || [] }))
       .catch(() => {});
-  }, []);
-  const inv = useMemo(
-    () => INVENTORY.map((it, i) => (stockOverrides[i] != null ? { ...it, stock: stockOverrides[i] } : it)),
-    [stockOverrides]
-  );
+  useEffect(() => { refreshOverrides(); }, []);
+
+  const hiddenSet = useMemo(() => new Set(overrides.hidden || []), [overrides.hidden]);
+  const inv = useMemo(() => {
+    const base = INVENTORY.map((it, i) => (overrides.stock[i] != null ? { ...it, stock: overrides.stock[i] } : it));
+    return [...base, ...(overrides.added || [])];
+  }, [overrides]);
+
+  // ---- Admin panel draft state (local edits, pushed to /api/inventory on Save) ----
+  const [adminQuery, setAdminQuery] = useState("");
+  const [adminStockEdits, setAdminStockEdits] = useState({});
+  const [adminHidden, setAdminHidden] = useState(new Set());
+  const [adminAdded, setAdminAdded] = useState([]);
+  const [adminSaveStatus, setAdminSaveStatus] = useState("");
+  const [adminSaveMsg, setAdminSaveMsg] = useState("");
+  const emptyNewItem = { storage: "", category: "", code: "", desc: "", unit: "", stock: "", productName: "", manufacturer: "", imageUrl: "" };
+  const [adminNewItem, setAdminNewItem] = useState(emptyNewItem);
+
+  // Sync drafts from the server whenever overrides (re)load — also runs right
+  // after a successful save, which is a no-op since drafts already match.
+  useEffect(() => {
+    setAdminStockEdits(overrides.stock);
+    setAdminHidden(new Set(overrides.hidden));
+    setAdminAdded(overrides.added);
+  }, [overrides]);
+
+  const adminInv = useMemo(() => {
+    const base = INVENTORY.map((it, i) => (adminStockEdits[i] != null ? { ...it, stock: adminStockEdits[i] } : it));
+    return [...base, ...adminAdded];
+  }, [adminStockEdits, adminAdded]);
+
+  const adminFiltered = useMemo(() => {
+    const q = adminQuery.trim().toLowerCase();
+    return adminInv.map((it, idx) => [idx, it]).filter(([, it]) => {
+      if (!q) return true;
+      return (it.code || "").toLowerCase().includes(q) || (it.desc || "").toLowerCase().includes(q);
+    });
+  }, [adminInv, adminQuery]);
+
+  function setAdminStock(idx, value) {
+    setAdminStockEdits((p) => ({ ...p, [idx]: value }));
+  }
+
+  function toggleAdminHidden(idx) {
+    setAdminHidden((p) => {
+      const n = new Set(p);
+      if (n.has(idx)) n.delete(idx);
+      else n.add(idx);
+      return n;
+    });
+  }
+
+  function addNewItem() {
+    if (!adminNewItem.code.trim() || !adminNewItem.desc.trim()) {
+      window.alert("Code and description are required.");
+      return;
+    }
+    setAdminAdded((p) => [...p, { ...adminNewItem }]);
+    setAdminNewItem(emptyNewItem);
+  }
+
+  function removeAddedItem(addedIdx) {
+    setAdminAdded((p) => p.filter((_, i) => i !== addedIdx));
+  }
+
+  async function saveAdminChanges() {
+    setAdminSaveStatus("working");
+    setAdminSaveMsg("Saving…");
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode: adminPasscode,
+          stock: adminStockEdits,
+          hidden: Array.from(adminHidden),
+          added: adminAdded,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Server error");
+      }
+      await refreshOverrides();
+      setAdminSaveStatus("saved");
+      setAdminSaveMsg("Saved. Other kiosks will see this the next time they reload the app.");
+    } catch (err) {
+      setAdminSaveStatus("error");
+      setAdminSaveMsg("Couldn't save: " + (err && err.message ? err.message : err));
+    }
+  }
 
   const storages = useMemo(
-    () => ["All", ...Array.from(new Set(INVENTORY.map((i) => i.storage).filter(Boolean)))],
-    []
+    () => ["All", ...Array.from(new Set(inv.map((i) => i.storage).filter(Boolean)))],
+    [inv]
   );
   const categories = useMemo(
-    () => ["All", ...Array.from(new Set(INVENTORY.map((i) => i.category).filter(Boolean)))],
-    []
+    () => ["All", ...Array.from(new Set(inv.map((i) => i.category).filter(Boolean)))],
+    [inv]
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return inv.map((it, idx) => [idx, it]).filter(([, it]) => {
+    return inv.map((it, idx) => [idx, it]).filter(([idx, it]) => {
+      if (hiddenSet.has(idx)) return false;
       if (storageF !== "All" && it.storage !== storageF) return false;
       if (catF !== "All" && it.category !== catF) return false;
       if (q && !((it.code || "").toLowerCase().includes(q) || (it.desc || "").toLowerCase().includes(q)))
         return false;
       return true;
     });
-  }, [query, storageF, catF, inv]);
+  }, [query, storageF, catF, inv, hiddenSet]);
 
   // ---- Order-mode derived data ----
   const cartLines = useMemo(
@@ -2062,18 +2169,19 @@ export default function SupplyMatch() {
   );
   const cartTotalUnits = useMemo(() => cartLines.reduce((s, l) => s + l.qty, 0), [cartLines]);
   const orderCategories = useMemo(
-    () => ["All", ...Array.from(new Set(INVENTORY.map((i) => i.category).filter(Boolean)))],
-    []
+    () => ["All", ...Array.from(new Set(inv.map((i) => i.category).filter(Boolean)))],
+    [inv]
   );
   const orderFiltered = useMemo(() => {
     const q = orderQuery.trim().toLowerCase();
-    return inv.map((it, idx) => [idx, it]).filter(([, it]) => {
+    return inv.map((it, idx) => [idx, it]).filter(([idx, it]) => {
+      if (hiddenSet.has(idx)) return false;
       if (orderCatF !== "All" && it.category !== orderCatF) return false;
       if (q && !((it.code || "").toLowerCase().includes(q) || (it.desc || "").toLowerCase().includes(q)))
         return false;
       return true;
     });
-  }, [orderQuery, orderCatF, inv]);
+  }, [orderQuery, orderCatF, inv, hiddenSet]);
 
   // Persist overrides to localStorage whenever they change.
   useEffect(() => {
@@ -2788,11 +2896,82 @@ export default function SupplyMatch() {
       {mode === "admin" && (
       <div className="body adminbody">
         <section className="adminpanel">
-          <h2>Admin</h2>
+          <h2>Admin — Inventory</h2>
           <p className="sub">
-            Logged in. {Object.keys(stockOverrides).length} stock override{Object.keys(stockOverrides).length === 1 ? "" : "s"} currently synced from the shared inventory file.
+            Edit stock counts, hide discontinued items, or add new ones. Changes only take effect for everyone after you click <b>Save changes</b> — every kiosk picks them up on its next reload.
           </p>
-          <p className="sub">Stock editing, item add/remove, and the monthly Excel upload will go here next.</p>
+
+          <div className="admin-savebar">
+            <button className="btn primary" disabled={adminSaveStatus === "working"} onClick={saveAdminChanges}>
+              <Save size={15} /> Save changes
+            </button>
+            {adminSaveMsg && (
+              <div className={"savemsg " + (adminSaveStatus === "saved" ? "ok" : adminSaveStatus === "error" ? "err" : "info")}>
+                {adminSaveStatus === "saved" && <Check size={13} style={{ verticalAlign: "-2px" }} />}{" "}
+                {adminSaveMsg}
+              </div>
+            )}
+          </div>
+
+          <div className="searchwrap admin-search">
+            <Search size={17} />
+            <input
+              placeholder="Search code or description"
+              value={adminQuery}
+              onChange={(e) => setAdminQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="admintable">
+            <div className="admintable-head">
+              <div>Code</div>
+              <div>Description</div>
+              <div>Storage</div>
+              <div>Stock</div>
+              <div></div>
+            </div>
+            <div className="admintable-body">
+              {adminFiltered.map(([idx, it]) => (
+                <div key={idx} className={"admintable-row" + (adminHidden.has(idx) ? " hidden-row" : "")}>
+                  <div className="atc-code">{it.code || "— no code —"}</div>
+                  <div className="atc-desc">{it.desc}</div>
+                  <div className="atc-storage">{it.storage}</div>
+                  <div>
+                    <input
+                      className="atc-stock"
+                      value={adminStockEdits[idx] != null ? adminStockEdits[idx] : (it.stock || "")}
+                      onChange={(e) => setAdminStock(idx, e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    {idx < INVENTORY.length ? (
+                      <button className="btn" onClick={() => toggleAdminHidden(idx)}>
+                        {adminHidden.has(idx) ? "Unhide" : "Hide"}
+                      </button>
+                    ) : (
+                      <button className="btn danger" onClick={() => removeAddedItem(idx - INVENTORY.length)}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <h3>Add a new item</h3>
+          <div className="admin-newitem">
+            <input placeholder="Code" value={adminNewItem.code} onChange={(e) => setAdminNewItem((p) => ({ ...p, code: e.target.value }))} />
+            <input placeholder="Description" value={adminNewItem.desc} onChange={(e) => setAdminNewItem((p) => ({ ...p, desc: e.target.value }))} />
+            <input placeholder="Storage (e.g. 7W)" value={adminNewItem.storage} onChange={(e) => setAdminNewItem((p) => ({ ...p, storage: e.target.value }))} />
+            <input placeholder="Category" value={adminNewItem.category} onChange={(e) => setAdminNewItem((p) => ({ ...p, category: e.target.value }))} />
+            <input placeholder="Unit (e.g. EA)" value={adminNewItem.unit} onChange={(e) => setAdminNewItem((p) => ({ ...p, unit: e.target.value }))} />
+            <input placeholder="Stock" value={adminNewItem.stock} onChange={(e) => setAdminNewItem((p) => ({ ...p, stock: e.target.value }))} />
+            <input placeholder="Product name" value={adminNewItem.productName} onChange={(e) => setAdminNewItem((p) => ({ ...p, productName: e.target.value }))} />
+            <input placeholder="Manufacturer" value={adminNewItem.manufacturer} onChange={(e) => setAdminNewItem((p) => ({ ...p, manufacturer: e.target.value }))} />
+            <input placeholder="Image URL (optional)" value={adminNewItem.imageUrl} onChange={(e) => setAdminNewItem((p) => ({ ...p, imageUrl: e.target.value }))} />
+            <button className="btn" onClick={addNewItem}><Plus size={15} /> Add item</button>
+          </div>
         </section>
       </div>
       )}
