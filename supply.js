@@ -1953,10 +1953,11 @@ function loadOverrides() {
 // "All Items-RPN" is the master reference tab and is intentionally not orderable.
 const WINGS = ["7W", "7E", "6W", "6E", "5W", "5E", "3W", "3E", "2W", "2E"];
 
-// INVENTORY[0..137] line up 1:1 with the template's data rows 6..143 on every
-// wing tab (verified). Items beyond that (app-only extras) have no template row.
+// INVENTORY[0..139] line up 1:1 with the template's data rows 6..145 on every
+// wing tab (verified). Admin-added items (index >= INVENTORY.length) have no
+// template row and are appended after the last row.
 const TEMPLATE_FIRST_ROW = 6;
-const TEMPLATE_LAST_INDEX = 137;
+const TEMPLATE_LAST_INDEX = INVENTORY.length - 1;
 const TEMPLATE_PATH = "/order-template.xlsx";
 
 const ORDER_WING_KEY = "supply-order-wing";
@@ -2320,19 +2321,11 @@ export default function SupplyMatch() {
     const ws = wb.getWorksheet(wing);
     if (!ws) throw new Error("Wing tab '" + wing + "' not found in template.");
 
-    const appendItems = [];
     Object.entries(cart).forEach(([idxStr, qty]) => {
       const idx = Number(idxStr);
       const q = Number(qty);
-      if (!q) return;
-      if (idx <= TEMPLATE_LAST_INDEX) {
-        ws.getCell("H" + (idx + TEMPLATE_FIRST_ROW)).value = q;
-      } else {
-        // App-only item with no template row — queue it to be appended below.
-        const it = inv[idx];
-        if (!it) return; // item was removed by admin since being added to this cart
-        appendItems.push({ it, q });
-      }
+      if (!q || idx > TEMPLATE_LAST_INDEX) return;
+      ws.getCell("H" + (idx + TEMPLATE_FIRST_ROW)).value = q;
     });
 
     // Admin-hidden items still have a pre-printed row in the template — remove
@@ -2343,15 +2336,31 @@ export default function SupplyMatch() {
       .sort((a, b) => b - a)
       .forEach((idx) => ws.spliceRows(idx + TEMPLATE_FIRST_ROW, 1));
 
-    // Append admin-added items in the cart as new rows, copying the styling
-    // of the last item row so they match the rest of the list.
-    if (appendItems.length) {
-      const styleRow = ws.getRow(ws.actualRowCount);
+    // Admin-added items have no template row — always show them (like every
+    // other item), appended right after the last row with actual content.
+    // (Templates can have a trailing blank-but-styled row, which would
+    // otherwise leave a gap before the appended rows.)
+    const addedItems = inv.slice(INVENTORY.length);
+    if (addedItems.length) {
+      let lastContentRow = ws.actualRowCount;
+      while (lastContentRow >= TEMPLATE_FIRST_ROW) {
+        let hasContent = false;
+        ws.getRow(lastContentRow).eachCell({ includeEmpty: false }, () => {
+          hasContent = true;
+        });
+        if (hasContent) break;
+        lastContentRow--;
+      }
+      const styleRow = ws.getRow(lastContentRow);
       const styles = [];
       for (let c = 1; c <= 9; c++) styles.push(styleRow.getCell(c).style);
-      appendItems.forEach(({ it, q }) => {
-        const row = ws.addRow([it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""]);
+      addedItems.forEach((it, i) => {
+        const idx = INVENTORY.length + i;
+        const q = Number(cart[idx]) || "";
+        const row = ws.getRow(lastContentRow + 1 + i);
+        row.values = [it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""];
         for (let c = 1; c <= 9; c++) row.getCell(c).style = styles[c - 1];
+        row.commit();
       });
     }
 
