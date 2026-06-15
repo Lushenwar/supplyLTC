@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search, Check, AlertTriangle, ExternalLink, Download,
   ChevronLeft, ImageOff, PackageSearch, Eraser,
-  ShoppingCart, Plus, Minus, Trash2, Printer, Save, FolderOpen, ClipboardCheck, Mail, Lock, Unlock
+  ShoppingCart, Plus, Minus, Trash2, Printer, Save, FolderOpen, ClipboardCheck, Mail, Lock, Unlock,
+  Upload, FileSpreadsheet, PackagePlus, PackageMinus, RefreshCw
 } from "lucide-react";
 
 // PRE-ENRICHED INVENTORY WITH ZERO RUNTIME API COSTS
@@ -1893,21 +1894,22 @@ input,select,textarea{font-family:inherit}
 .savemsg.err{background:var(--red-soft);border-color:#E7C2C2;color:#7E3030}
 .subnote{font-size:11.5px;color:var(--faint);margin-top:8px}
 .miniflag{font-size:10.5px;font-weight:700;color:var(--teal-d);background:var(--teal-soft);border-radius:5px;padding:2px 6px;margin-left:6px}
-.adminbody{padding:24px;overflow:auto}
-.adminpanel{max-width:1280px}
-.adminpanel h2{font-size:20px;margin:0 0 10px}
-.adminpanel h3{font-size:15px;margin:0 0 10px}
-.adminpanel .sub{font-size:13px;color:var(--soft);margin-bottom:8px}
-.admin-savebar{display:flex;align-items:center;gap:12px;margin:14px 0;flex-wrap:wrap}
+.adminbody{padding:24px;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:18px}
+.adminpanel{width:100%;max-width:1280px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 26px;box-shadow:0 1px 2px rgba(20,36,43,.04)}
+.adminpanel h2{font-size:16px;margin:0 0 6px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+.adminpanel h2 svg{color:var(--teal);flex-shrink:0}
+.adminpanel h3{font-size:14px;margin:0 0 10px}
+.adminpanel .sub{font-size:13px;color:var(--soft);margin-bottom:0;line-height:1.55;max-width:760px}
+.admin-savebar{display:flex;align-items:center;gap:12px;margin:14px 0 0;flex-wrap:wrap}
 .admin-savebar .savemsg{margin:0}
-.admin-main{display:flex;gap:24px;align-items:flex-start}
+.admin-main{display:flex;gap:24px;align-items:flex-start;margin-top:16px}
 .admin-table-col{flex:1;min-width:0}
 .admin-side-col{width:300px;flex-shrink:0}
 .admin-search{margin-bottom:10px}
 .admintable{border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .admintable-head,.admintable-row{display:grid;grid-template-columns:1.2fr 3fr 0.8fr 0.8fr 0.9fr;gap:10px;align-items:center;padding:8px 12px}
 .admintable-head{background:var(--line2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
-.admintable-body{max-height:calc(100vh - 320px);overflow:auto}
+.admintable-body{max-height:calc(100vh - 380px);overflow:auto}
 .admintable-row{border-top:1px solid var(--line2);font-size:12.5px}
 .admintable-row.hidden-row{opacity:.45}
 .atc-code{font-family:var(--mono);font-weight:600}
@@ -1916,16 +1918,48 @@ input,select,textarea{font-family:inherit}
 .admin-newitem{display:grid;grid-template-columns:1fr;gap:8px}
 .admin-newitem input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
 .admin-newitem button{justify-content:center}
-.baseline-preview{margin-top:10px}
-.baseline-preview details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12.5px}
-.baseline-preview summary{cursor:pointer;font-weight:600}
-.baseline-preview ul{margin:8px 0 0;padding-left:20px;max-height:220px;overflow:auto}
-.baseline-preview li{margin-bottom:2px}
+
+/* Monthly inventory upload */
+.baseline-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.baseline-badge{flex-shrink:0;background:var(--teal-soft);border:1px solid var(--teal-soft);border-radius:10px;padding:9px 14px;text-align:right;min-width:230px}
+.baseline-badge-label{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-d)}
+.baseline-badge-file{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-top:3px;word-break:break-all}
+.baseline-badge-meta{display:block;font-size:11px;color:var(--soft);margin-top:3px}
+.upload-drop{display:inline-flex;align-items:center;gap:10px;border:1.5px dashed var(--teal);border-radius:10px;padding:13px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--teal-d);background:var(--teal-soft);transition:border-color .12s,background .12s}
+.upload-drop:hover{background:#D9EDED}
+.upload-drop input[type=file]{display:none}
+.upload-drop.disabled{opacity:.5;cursor:not-allowed}
+.diff-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.diff-stat{border:1px solid var(--line);border-radius:10px;overflow:hidden;border-top:3px solid var(--line)}
+.diff-stat summary,.diff-stat .diff-stat-row{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.diff-stat .diff-stat-row{cursor:default;opacity:.6}
+.diff-stat summary::-webkit-details-marker{display:none}
+.diff-stat-text .num{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}
+.diff-stat-text .label{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.diff-stat summary svg,.diff-stat .diff-stat-row svg{color:var(--faint);flex-shrink:0}
+.diff-stat.added{border-top-color:var(--green)}
+.diff-stat.added .num{color:var(--green)}
+.diff-stat.added summary svg,.diff-stat.added .diff-stat-row svg{color:var(--green)}
+.diff-stat.removed{border-top-color:var(--red)}
+.diff-stat.removed .num{color:var(--red)}
+.diff-stat.removed summary svg,.diff-stat.removed .diff-stat-row svg{color:var(--red)}
+.diff-stat.changed{border-top-color:var(--amber)}
+.diff-stat.changed .num{color:var(--amber)}
+.diff-stat.changed summary svg,.diff-stat.changed .diff-stat-row svg{color:var(--amber)}
+.diff-stat ul{margin:0;padding:0 14px 10px;list-style:none;max-height:220px;overflow:auto;border-top:1px solid var(--line2)}
+.diff-stat li{padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--line2);display:flex;justify-content:space-between;gap:10px}
+.diff-stat li:last-child{border-bottom:none}
+.diff-stat .item-code{font-family:var(--mono);font-weight:600;flex-shrink:0;color:var(--ink)}
+.diff-stat .item-desc{color:var(--soft);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.diff-stat .item-change{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap;flex-shrink:0}
 
 @media (max-width:960px){
   .admin-main{flex-direction:column}
   .admin-side-col{width:100%}
   .admintable-body{max-height:400px}
+  .diff-stats{grid-template-columns:1fr}
+  .baseline-head{flex-direction:column}
+  .baseline-badge{text-align:left;min-width:0;width:100%}
 }
 
 @media (max-width:860px){
@@ -3118,39 +3152,136 @@ export default function SupplyMatch() {
       {mode === "admin" && (
       <div className="body adminbody">
         <section className="adminpanel">
-          <h2>Admin — Monthly inventory upload</h2>
-          <p className="sub">
-            At the start of each month, upload the updated inventory spreadsheet (same layout as the order forms — Storage, Category, Code, Descriptions, Unit, Stock level starting at row {TEMPLATE_FIRST_ROW}). It becomes the new baseline for every wing: new items, removed items, and stock-count changes are detected automatically. Existing product photos and details are kept for items that still match by code.
-          </p>
-          {overrides.baselineLabel && (
-            <p className="sub">
-              Current baseline: <b>{overrides.baselineLabel}</b>
-              {overrides.baselineDate ? " — uploaded " + new Date(overrides.baselineDate).toLocaleString() : ""}
-              {" "}({baseLen} item{baseLen === 1 ? "" : "s"})
-            </p>
-          )}
+          <div className="baseline-head">
+            <div>
+              <h2><FileSpreadsheet size={18} /> Monthly inventory upload</h2>
+              <p className="sub">
+                At the start of each month, upload the updated inventory spreadsheet (same layout as the order forms — Storage, Category, Code, Descriptions, Unit, Stock level starting at row {TEMPLATE_FIRST_ROW}). It becomes the new baseline for every wing: new items, removed items, and stock-count changes are detected automatically. Existing product photos and details are kept for items that still match by code.
+              </p>
+            </div>
+            {overrides.baselineLabel && (
+              <div className="baseline-badge">
+                <span className="baseline-badge-label">Current baseline</span>
+                <span className="baseline-badge-file">{overrides.baselineLabel}</span>
+                <span className="baseline-badge-meta">
+                  {baseLen} item{baseLen === 1 ? "" : "s"}
+                  {overrides.baselineDate ? " · uploaded " + new Date(overrides.baselineDate).toLocaleString() : ""}
+                </span>
+              </div>
+            )}
+          </div>
 
           <div className="admin-savebar">
-            <label className="btn">
+            <label className={"upload-drop" + (baselineStatus === "parsing" || baselineStatus === "saving" ? " disabled" : "")}>
+              <Upload size={16} />
+              {baselineStatus === "parsing" ? "Reading…" : baselineStatus === "saving" ? "Saving…" : "Choose spreadsheet…"}
               <input
                 type="file"
                 accept=".xlsx"
-                style={{ display: "none" }}
                 disabled={baselineStatus === "parsing" || baselineStatus === "saving"}
                 onChange={handleBaselineFile}
               />
-              Choose spreadsheet…
             </label>
+            {baselineMsg && (
+              <div className={"savemsg " + (baselineStatus === "saved" ? "ok" : baselineStatus === "error" ? "err" : "info")}>
+                {baselineStatus === "saved" && <Check size={13} style={{ verticalAlign: "-2px" }} />}{" "}
+                {baselineMsg}
+              </div>
+            )}
           </div>
-          {baselineMsg && (
-            <div className={"savemsg " + (baselineStatus === "saved" ? "ok" : baselineStatus === "error" ? "err" : "info")}>
-              {baselineStatus === "saved" && <Check size={13} style={{ verticalAlign: "-2px" }} />}{" "}
-              {baselineMsg}
-            </div>
-          )}
 
           {baselinePreview && (
-            <div className="baseline-preview">
+            <>
+              <div className="diff-stats">
+                {baselinePreview.added.length > 0 ? (
+                  <details className="diff-stat added">
+                    <summary>
+                      <div className="diff-stat-text">
+                        <span className="num">{baselinePreview.added.length}</span>
+                        <span className="label">New items</span>
+                      </div>
+                      <PackagePlus size={18} />
+                    </summary>
+                    <ul>
+                      {baselinePreview.added.map((it, i) => (
+                        <li key={i}>
+                          <span className="item-code">{it.code || "— no code —"}</span>
+                          <span className="item-desc">{it.desc}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : (
+                  <div className="diff-stat added">
+                    <div className="diff-stat-row">
+                      <div className="diff-stat-text">
+                        <span className="num">0</span>
+                        <span className="label">New items</span>
+                      </div>
+                      <PackagePlus size={18} />
+                    </div>
+                  </div>
+                )}
+                {baselinePreview.removed.length > 0 ? (
+                  <details className="diff-stat removed">
+                    <summary>
+                      <div className="diff-stat-text">
+                        <span className="num">{baselinePreview.removed.length}</span>
+                        <span className="label">Removed items</span>
+                      </div>
+                      <PackageMinus size={18} />
+                    </summary>
+                    <ul>
+                      {baselinePreview.removed.map((it, i) => (
+                        <li key={i}>
+                          <span className="item-code">{it.code || "— no code —"}</span>
+                          <span className="item-desc">{it.desc}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : (
+                  <div className="diff-stat removed">
+                    <div className="diff-stat-row">
+                      <div className="diff-stat-text">
+                        <span className="num">0</span>
+                        <span className="label">Removed items</span>
+                      </div>
+                      <PackageMinus size={18} />
+                    </div>
+                  </div>
+                )}
+                {baselinePreview.changed.length > 0 ? (
+                  <details className="diff-stat changed">
+                    <summary>
+                      <div className="diff-stat-text">
+                        <span className="num">{baselinePreview.changed.length}</span>
+                        <span className="label">Stock changes</span>
+                      </div>
+                      <RefreshCw size={18} />
+                    </summary>
+                    <ul>
+                      {baselinePreview.changed.map((c, i) => (
+                        <li key={i}>
+                          <span className="item-code">{c.code || "— no code —"}</span>
+                          <span className="item-change">{String(c.from ?? "") || "—"} → {String(c.to ?? "") || "—"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : (
+                  <div className="diff-stat changed">
+                    <div className="diff-stat-row">
+                      <div className="diff-stat-text">
+                        <span className="num">0</span>
+                        <span className="label">Stock changes</span>
+                      </div>
+                      <RefreshCw size={18} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="admin-savebar">
                 <button className="btn primary" disabled={baselineStatus === "saving"} onClick={confirmBaselineUpload}>
                   <Check size={15} /> Replace inventory with this file
@@ -3159,42 +3290,12 @@ export default function SupplyMatch() {
                   Cancel
                 </button>
               </div>
-              {baselinePreview.added.length > 0 && (
-                <details>
-                  <summary>{baselinePreview.added.length} new item{baselinePreview.added.length === 1 ? "" : "s"}</summary>
-                  <ul>
-                    {baselinePreview.added.map((it, i) => (
-                      <li key={i}>{it.code || "— no code —"} — {it.desc}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              {baselinePreview.removed.length > 0 && (
-                <details>
-                  <summary>{baselinePreview.removed.length} removed item{baselinePreview.removed.length === 1 ? "" : "s"}</summary>
-                  <ul>
-                    {baselinePreview.removed.map((it, i) => (
-                      <li key={i}>{it.code || "— no code —"} — {it.desc}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              {baselinePreview.changed.length > 0 && (
-                <details>
-                  <summary>{baselinePreview.changed.length} stock change{baselinePreview.changed.length === 1 ? "" : "s"}</summary>
-                  <ul>
-                    {baselinePreview.changed.map((c, i) => (
-                      <li key={i}>{c.code || "— no code —"} — {c.desc}: {String(c.from ?? "—") || "—"} → {String(c.to ?? "—") || "—"}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </div>
+            </>
           )}
         </section>
 
         <section className="adminpanel">
-          <h2>Admin — Inventory</h2>
+          <h2><PackageSearch size={18} /> Inventory</h2>
           <p className="sub">
             Edit stock counts, hide discontinued items, or add new ones. Changes only take effect for everyone after you click <b>Save changes</b> — every kiosk picks them up on its next reload.
           </p>
