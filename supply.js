@@ -1916,6 +1916,11 @@ input,select,textarea{font-family:inherit}
 .admin-newitem{display:grid;grid-template-columns:1fr;gap:8px}
 .admin-newitem input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
 .admin-newitem button{justify-content:center}
+.baseline-preview{margin-top:10px}
+.baseline-preview details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12.5px}
+.baseline-preview summary{cursor:pointer;font-weight:600}
+.baseline-preview ul{margin:8px 0 0;padding-left:20px;max-height:220px;overflow:auto}
+.baseline-preview li{margin-bottom:2px}
 
 @media (max-width:960px){
   .admin-main{flex-direction:column}
@@ -1957,7 +1962,11 @@ const WINGS = ["7W", "7E", "6W", "6E", "5W", "5E", "3W", "3E", "2W", "2E"];
 // wing tab (verified). Admin-added items (index >= INVENTORY.length) have no
 // template row and are appended after the last row.
 const TEMPLATE_FIRST_ROW = 6;
-const TEMPLATE_LAST_INDEX = INVENTORY.length - 1;
+// The static template only has pre-built rows for this many items. If a
+// monthly baseline upload has more (or fewer) items, the ones beyond this
+// capacity are appended after the template's last row, same as admin-added
+// items — see buildOrderFile.
+const TEMPLATE_ROW_CAPACITY = INVENTORY.length;
 const TEMPLATE_PATH = "/order-template.xlsx";
 
 const ORDER_WING_KEY = "supply-order-wing";
@@ -2048,20 +2057,37 @@ export default function SupplyMatch() {
   // keyed by INVENTORY array index (so item order/template-row mapping never
   // shifts), a list of hidden indices (soft "remove"), and admin-added items
   // (appended after INVENTORY, same as the existing app-only extra items).
-  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [] });
+  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null });
   const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
   const refreshOverrides = () =>
     fetch("/api/inventory", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [] }))
-      .then((data) => setOverrides({ stock: data.stock || {}, hidden: data.hidden || [], added: data.added || [] }))
+      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null }))
+      .then((data) =>
+        setOverrides({
+          stock: data.stock || {},
+          hidden: data.hidden || [],
+          added: data.added || [],
+          baseline: Array.isArray(data.baseline) ? data.baseline : null,
+          baselineDate: data.baselineDate || null,
+          baselineLabel: data.baselineLabel || null,
+        })
+      )
       .catch(() => {});
   useEffect(() => { refreshOverrides(); }, []);
 
+  // The baseline (from a monthly inventory upload) replaces the hardcoded
+  // INVENTORY entirely when present. Everything downstream — stock overrides,
+  // hidden indices, admin-added items, order-export row mapping — is indexed
+  // against whichever of these is currently in effect.
+  const baseInventory = (overrides.baseline && overrides.baseline.length) ? overrides.baseline : INVENTORY;
+  const baseLen = baseInventory.length;
+  const templateLastIndex = Math.min(baseLen, TEMPLATE_ROW_CAPACITY) - 1;
+
   const hiddenSet = useMemo(() => new Set(overrides.hidden || []), [overrides.hidden]);
   const inv = useMemo(() => {
-    const base = INVENTORY.map((it, i) => (overrides.stock[i] != null ? { ...it, stock: overrides.stock[i] } : it));
+    const base = baseInventory.map((it, i) => (overrides.stock[i] != null ? { ...it, stock: overrides.stock[i] } : it));
     return [...base, ...(overrides.added || [])];
-  }, [overrides]);
+  }, [overrides, baseInventory]);
 
   // ---- Admin panel draft state (local edits, pushed to /api/inventory on Save) ----
   const [adminQuery, setAdminQuery] = useState("");
@@ -2073,6 +2099,11 @@ export default function SupplyMatch() {
   const emptyNewItem = { storage: "", category: "", code: "", desc: "", unit: "", stock: "", productName: "", manufacturer: "", imageUrl: "" };
   const [adminNewItem, setAdminNewItem] = useState(emptyNewItem);
 
+  // ---- Monthly inventory baseline upload (admin) ----
+  const [baselinePreview, setBaselinePreview] = useState(null); // { merged, added, removed, changed, fileName }
+  const [baselineStatus, setBaselineStatus] = useState(""); // "" | "parsing" | "ready" | "saving" | "saved" | "error"
+  const [baselineMsg, setBaselineMsg] = useState("");
+
   // Sync drafts from the server whenever overrides (re)load — also runs right
   // after a successful save, which is a no-op since drafts already match.
   useEffect(() => {
@@ -2082,9 +2113,9 @@ export default function SupplyMatch() {
   }, [overrides]);
 
   const adminInv = useMemo(() => {
-    const base = INVENTORY.map((it, i) => (adminStockEdits[i] != null ? { ...it, stock: adminStockEdits[i] } : it));
+    const base = baseInventory.map((it, i) => (adminStockEdits[i] != null ? { ...it, stock: adminStockEdits[i] } : it));
     return [...base, ...adminAdded];
-  }, [adminStockEdits, adminAdded]);
+  }, [adminStockEdits, adminAdded, baseInventory]);
 
   const adminFiltered = useMemo(() => {
     const q = adminQuery.trim().toLowerCase();
@@ -2132,6 +2163,9 @@ export default function SupplyMatch() {
           stock: adminStockEdits,
           hidden: Array.from(adminHidden),
           added: adminAdded,
+          baseline: overrides.baseline,
+          baselineDate: overrides.baselineDate,
+          baselineLabel: overrides.baselineLabel,
         }),
       });
       if (!res.ok) {
@@ -2145,6 +2179,144 @@ export default function SupplyMatch() {
       setAdminSaveStatus("error");
       setAdminSaveMsg("Couldn't save: " + (err && err.message ? err.message : err));
     }
+  }
+
+  // Read a cell's value as a trimmed string, unwrapping Excel rich-text runs.
+  function cellText(row, col) {
+    let v = row.getCell(col).value;
+    if (v && typeof v === "object" && Array.isArray(v.richText)) {
+      v = v.richText.map((t) => t.text).join("");
+    }
+    if (v == null) return "";
+    return String(v).trim();
+  }
+
+  const baselineKey = (it) =>
+    it.code ? "code:" + it.code.trim().toLowerCase() : "desc:" + (it.desc || "").trim().toLowerCase();
+
+  // Parse a monthly inventory spreadsheet (same layout as the order forms:
+  // Storage / Category / Code / Descriptions / Unit / Stock level starting at
+  // row 6) and diff it against the current inventory so the admin can review
+  // new items, removed items, and stock changes before replacing everything.
+  async function handleBaselineFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setBaselinePreview(null);
+    setBaselineStatus("parsing");
+    setBaselineMsg("Reading file…");
+
+    try {
+      let ExcelJS;
+      try {
+        ExcelJS = (await import("exceljs")).default;
+      } catch {
+        throw new Error("The app was updated since this page loaded. Please refresh the page and try again.");
+      }
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await file.arrayBuffer());
+      const ws = wb.worksheets[0];
+      if (!ws) throw new Error("No worksheet found in the file.");
+
+      const rows = [];
+      for (let r = TEMPLATE_FIRST_ROW; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r);
+        const code = cellText(row, 3);
+        const desc = cellText(row, 4);
+        if (!code && !desc) continue;
+        rows.push({
+          storage: cellText(row, 1),
+          category: cellText(row, 2),
+          code,
+          desc,
+          unit: cellText(row, 5),
+          stock: cellText(row, 6),
+        });
+      }
+      if (!rows.length) {
+        throw new Error("No item rows found (expected data starting at row " + TEMPLATE_FIRST_ROW + ").");
+      }
+
+      // Carry over curated fields (images, product name, manufacturer) from
+      // the current inventory for items that still match by code.
+      const lookup = new Map();
+      inv.forEach((it) => lookup.set(baselineKey(it), it));
+
+      const merged = rows.map((row) => {
+        const existing = lookup.get(baselineKey(row));
+        const out = {
+          storage: row.storage || (existing && existing.storage) || "",
+          category: row.category || (existing && existing.category) || "",
+          code: row.code,
+          desc: row.desc,
+          unit: row.unit || (existing && existing.unit) || "",
+          stock: row.stock,
+          productName: (existing && existing.productName) || "",
+          manufacturer: (existing && existing.manufacturer) || "",
+          suggestedStatus: (existing && existing.suggestedStatus) || "match",
+        };
+        if (existing && existing.imageUrl) out.imageUrl = existing.imageUrl;
+        if (existing && existing.imageFallback) out.imageFallback = existing.imageFallback;
+        return out;
+      });
+
+      const mergedKeys = new Set(merged.map(baselineKey));
+      const added = merged.filter((m) => !lookup.has(baselineKey(m)));
+      const removed = inv.filter((it) => !mergedKeys.has(baselineKey(it)));
+      const changed = merged
+        .map((m) => ({ m, existing: lookup.get(baselineKey(m)) }))
+        .filter(({ existing, m }) => existing && String(existing.stock ?? "").trim() !== String(m.stock ?? "").trim())
+        .map(({ m, existing }) => ({ code: m.code, desc: m.desc, from: existing.stock, to: m.stock }));
+
+      setBaselinePreview({ merged, added, removed, changed, fileName: file.name });
+      setBaselineStatus("ready");
+      setBaselineMsg(
+        rows.length + " items parsed — " + added.length + " new, " + removed.length + " removed, " +
+        changed.length + " stock change" + (changed.length === 1 ? "" : "s") + "."
+      );
+    } catch (err) {
+      setBaselineStatus("error");
+      setBaselineMsg("Couldn't read file: " + (err && err.message ? err.message : err));
+    }
+  }
+
+  async function confirmBaselineUpload() {
+    if (!baselinePreview) return;
+    setBaselineStatus("saving");
+    setBaselineMsg("Saving…");
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode: adminPasscode,
+          stock: {},
+          hidden: [],
+          added: [],
+          baseline: baselinePreview.merged,
+          baselineDate: new Date().toISOString(),
+          baselineLabel: baselinePreview.fileName,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Server error");
+      }
+      await refreshOverrides();
+      setBaselinePreview(null);
+      setBaselineStatus("saved");
+      setBaselineMsg("Inventory replaced. Other kiosks will see this the next time they reload the app.");
+    } catch (err) {
+      setBaselineStatus("error");
+      setBaselineMsg("Couldn't save: " + (err && err.message ? err.message : err));
+    }
+  }
+
+  function cancelBaselineUpload() {
+    setBaselinePreview(null);
+    setBaselineStatus("");
+    setBaselineMsg("");
   }
 
   const storages = useMemo(
@@ -2324,7 +2496,7 @@ export default function SupplyMatch() {
     Object.entries(cart).forEach(([idxStr, qty]) => {
       const idx = Number(idxStr);
       const q = Number(qty);
-      if (!q || idx > TEMPLATE_LAST_INDEX) return;
+      if (!q || idx > templateLastIndex) return;
       ws.getCell("H" + (idx + TEMPLATE_FIRST_ROW)).value = q;
     });
 
@@ -2332,15 +2504,17 @@ export default function SupplyMatch() {
     // the whole row (bottom-up so earlier row numbers stay valid) so discontinued
     // items don't leave gaps on the generated order form.
     Array.from(hiddenSet)
-      .filter((idx) => idx <= TEMPLATE_LAST_INDEX)
+      .filter((idx) => idx <= templateLastIndex)
       .sort((a, b) => b - a)
       .forEach((idx) => ws.spliceRows(idx + TEMPLATE_FIRST_ROW, 1));
 
-    // Admin-added items have no template row — always show them (like every
-    // other item), appended right after the last row with actual content.
-    // (Templates can have a trailing blank-but-styled row, which would
-    // otherwise leave a gap before the appended rows.)
-    const addedItems = inv.slice(INVENTORY.length);
+    // Items beyond the template's row capacity have no pre-built template
+    // row — this includes admin-added items and, after a monthly baseline
+    // upload, any baseline items past TEMPLATE_ROW_CAPACITY. Always show them
+    // (like every other item), appended right after the last row with actual
+    // content. (Templates can have a trailing blank-but-styled row, which
+    // would otherwise leave a gap before the appended rows.)
+    const addedItems = inv.slice(baseLen);
     if (addedItems.length) {
       let lastContentRow = ws.actualRowCount;
       while (lastContentRow >= TEMPLATE_FIRST_ROW) {
@@ -2355,7 +2529,7 @@ export default function SupplyMatch() {
       const styles = [];
       for (let c = 1; c <= 9; c++) styles.push(styleRow.getCell(c).style);
       addedItems.forEach((it, i) => {
-        const idx = INVENTORY.length + i;
+        const idx = baseLen + i;
         const q = Number(cart[idx]) || "";
         const row = ws.getRow(lastContentRow + 1 + i);
         row.values = [it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""];
@@ -2944,6 +3118,82 @@ export default function SupplyMatch() {
       {mode === "admin" && (
       <div className="body adminbody">
         <section className="adminpanel">
+          <h2>Admin — Monthly inventory upload</h2>
+          <p className="sub">
+            At the start of each month, upload the updated inventory spreadsheet (same layout as the order forms — Storage, Category, Code, Descriptions, Unit, Stock level starting at row {TEMPLATE_FIRST_ROW}). It becomes the new baseline for every wing: new items, removed items, and stock-count changes are detected automatically. Existing product photos and details are kept for items that still match by code.
+          </p>
+          {overrides.baselineLabel && (
+            <p className="sub">
+              Current baseline: <b>{overrides.baselineLabel}</b>
+              {overrides.baselineDate ? " — uploaded " + new Date(overrides.baselineDate).toLocaleString() : ""}
+              {" "}({baseLen} item{baseLen === 1 ? "" : "s"})
+            </p>
+          )}
+
+          <div className="admin-savebar">
+            <label className="btn">
+              <input
+                type="file"
+                accept=".xlsx"
+                style={{ display: "none" }}
+                disabled={baselineStatus === "parsing" || baselineStatus === "saving"}
+                onChange={handleBaselineFile}
+              />
+              Choose spreadsheet…
+            </label>
+          </div>
+          {baselineMsg && (
+            <div className={"savemsg " + (baselineStatus === "saved" ? "ok" : baselineStatus === "error" ? "err" : "info")}>
+              {baselineStatus === "saved" && <Check size={13} style={{ verticalAlign: "-2px" }} />}{" "}
+              {baselineMsg}
+            </div>
+          )}
+
+          {baselinePreview && (
+            <div className="baseline-preview">
+              <div className="admin-savebar">
+                <button className="btn primary" disabled={baselineStatus === "saving"} onClick={confirmBaselineUpload}>
+                  <Check size={15} /> Replace inventory with this file
+                </button>
+                <button className="btn" disabled={baselineStatus === "saving"} onClick={cancelBaselineUpload}>
+                  Cancel
+                </button>
+              </div>
+              {baselinePreview.added.length > 0 && (
+                <details>
+                  <summary>{baselinePreview.added.length} new item{baselinePreview.added.length === 1 ? "" : "s"}</summary>
+                  <ul>
+                    {baselinePreview.added.map((it, i) => (
+                      <li key={i}>{it.code || "— no code —"} — {it.desc}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {baselinePreview.removed.length > 0 && (
+                <details>
+                  <summary>{baselinePreview.removed.length} removed item{baselinePreview.removed.length === 1 ? "" : "s"}</summary>
+                  <ul>
+                    {baselinePreview.removed.map((it, i) => (
+                      <li key={i}>{it.code || "— no code —"} — {it.desc}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {baselinePreview.changed.length > 0 && (
+                <details>
+                  <summary>{baselinePreview.changed.length} stock change{baselinePreview.changed.length === 1 ? "" : "s"}</summary>
+                  <ul>
+                    {baselinePreview.changed.map((c, i) => (
+                      <li key={i}>{c.code || "— no code —"} — {c.desc}: {String(c.from ?? "—") || "—"} → {String(c.to ?? "—") || "—"}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="adminpanel">
           <h2>Admin — Inventory</h2>
           <p className="sub">
             Edit stock counts, hide discontinued items, or add new ones. Changes only take effect for everyone after you click <b>Save changes</b> — every kiosk picks them up on its next reload.
@@ -2994,12 +3244,12 @@ export default function SupplyMatch() {
                         />
                       </div>
                       <div>
-                        {idx < INVENTORY.length ? (
+                        {idx < baseLen ? (
                           <button className="btn" onClick={() => toggleAdminHidden(idx)}>
                             {adminHidden.has(idx) ? "Unhide" : "Hide"}
                           </button>
                         ) : (
-                          <button className="btn danger" onClick={() => removeAddedItem(idx - INVENTORY.length)}>
+                          <button className="btn danger" onClick={() => removeAddedItem(idx - baseLen)}>
                             <Trash2 size={14} />
                           </button>
                         )}

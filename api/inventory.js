@@ -11,7 +11,7 @@ import { put, list, del } from "@vercel/blob";
 const BLOB_PREFIX = "inventory-overrides/";
 const ADMIN_PASSCODE = "Sthaa123!";
 
-const EMPTY = { stock: {}, hidden: [], added: [] };
+const EMPTY = { stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null };
 
 async function readOverrides() {
   const { blobs } = await list({ prefix: BLOB_PREFIX });
@@ -20,7 +20,14 @@ async function readOverrides() {
   const res = await fetch(latest.url, { cache: "no-store" });
   if (!res.ok) return EMPTY;
   const data = await res.json();
-  return { stock: data.stock || {}, hidden: data.hidden || [], added: data.added || [] };
+  return {
+    stock: data.stock || {},
+    hidden: data.hidden || [],
+    added: data.added || [],
+    baseline: Array.isArray(data.baseline) ? data.baseline : null,
+    baselineDate: data.baselineDate || null,
+    baselineLabel: data.baselineLabel || null,
+  };
 }
 
 export default async function handler(req, res) {
@@ -36,20 +43,34 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { passcode, stock, hidden, added } = req.body || {};
+    const { passcode, stock, hidden, added, baseline, baselineDate, baselineLabel } = req.body || {};
     if (passcode !== ADMIN_PASSCODE) {
       return res.status(401).json({ error: "Invalid passcode" });
     }
     if (!stock || typeof stock !== "object" || !Array.isArray(hidden) || !Array.isArray(added)) {
       return res.status(400).json({ error: "Missing or invalid inventory data" });
     }
+    if (baseline !== undefined && baseline !== null && !Array.isArray(baseline)) {
+      return res.status(400).json({ error: "Invalid baseline inventory" });
+    }
     try {
       const { blobs: old } = await list({ prefix: BLOB_PREFIX });
-      await put(`${BLOB_PREFIX}${Date.now()}.json`, JSON.stringify({ stock, hidden, added }), {
-        access: "public",
-        addRandomSuffix: false,
-        contentType: "application/json",
-      });
+      await put(
+        `${BLOB_PREFIX}${Date.now()}.json`,
+        JSON.stringify({
+          stock,
+          hidden,
+          added,
+          baseline: baseline ?? null,
+          baselineDate: baselineDate ?? null,
+          baselineLabel: baselineLabel ?? null,
+        }),
+        {
+          access: "public",
+          addRandomSuffix: false,
+          contentType: "application/json",
+        }
+      );
       await Promise.all(old.map((b) => del(b.url)));
       return res.status(200).json({ ok: true });
     } catch (err) {
