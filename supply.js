@@ -2008,6 +2008,11 @@ const ORDER_NAME_KEY = "supply-order-nurse";
 const cartKey = (wing) => "supply-order-cart-" + wing;
 const submittedKey = (wing) => "supply-order-submitted-" + wing;
 
+// Tracks which baseline upload this device's carts were last synced against,
+// so a brand-new monthly inventory can wipe every wing's cart (old line-item
+// indices may point at completely different items afterwards).
+const BASELINE_STAMP_KEY = "supply-baseline-stamp";
+
 // Admin mode is a soft gate on the UI only — the real protection is that
 // /api/inventory's POST endpoint checks this same passcode server-side.
 const ADMIN_PASSCODE = "Sthaa123!";
@@ -2086,17 +2091,19 @@ export default function SupplyMatch() {
   const [saveStatus, setSaveStatus] = useState(""); // "", "working", "saved", "downloaded", "error"
   const [saveMsg, setSaveMsg] = useState("");
   const [showFieldErrors, setShowFieldErrors] = useState(false); // true once the nurse tries to save/print with missing fields
+  const [cartResetNotice, setCartResetNotice] = useState(false); // true right after a new monthly baseline wiped this wing's cart
 
   // Inventory overrides synced from the admin (via /api/inventory): stock counts
   // keyed by INVENTORY array index (so item order/template-row mapping never
   // shifts), a list of hidden indices (soft "remove"), and admin-added items
   // (appended after INVENTORY, same as the existing app-only extra items).
   const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null });
+  const [overridesLoaded, setOverridesLoaded] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
   const refreshOverrides = () =>
     fetch("/api/inventory", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null }))
-      .then((data) =>
+      .then((data) => {
         setOverrides({
           stock: data.stock || {},
           hidden: data.hidden || [],
@@ -2104,8 +2111,9 @@ export default function SupplyMatch() {
           baseline: Array.isArray(data.baseline) ? data.baseline : null,
           baselineDate: data.baselineDate || null,
           baselineLabel: data.baselineLabel || null,
-        })
-      )
+        });
+        setOverridesLoaded(true);
+      })
       .catch(() => {});
   useEffect(() => { refreshOverrides(); }, []);
 
@@ -2462,6 +2470,7 @@ export default function SupplyMatch() {
     setLastSubmitted(loadJSON(submittedKey(wing), null));
     setSaveStatus("");
     setSaveMsg("");
+    setCartResetNotice(false);
   }, [wing]);
 
   useEffect(() => {
@@ -2472,6 +2481,53 @@ export default function SupplyMatch() {
   useEffect(() => {
     try { localStorage.setItem(cartKey(wing), JSON.stringify(cart)); } catch {}
   }, [cart, wing]);
+
+  // Keep local carts in sync with the shared inventory whenever overrides
+  // (re)load:
+  // - A brand-new monthly baseline upload changes overrides.baselineDate —
+  //   old cart line-item indices may now point at completely different
+  //   items, so every wing's cart on this device is wiped.
+  // - Otherwise (e.g. the admin just hid or deleted one item), only drop
+  //   cart lines that point at items that are now hidden or no longer exist
+  //   — everything else in the cart is left untouched.
+  useEffect(() => {
+    if (!overridesLoaded) return;
+    const stamp = overrides.baselineDate || "";
+    const prevStamp = localStorage.getItem(BASELINE_STAMP_KEY);
+    if (prevStamp !== null && prevStamp !== stamp) {
+      WINGS.forEach((w) => {
+        try { localStorage.removeItem(cartKey(w)); } catch {}
+      });
+      setCart((c) => {
+        if (Object.keys(c).length) setCartResetNotice(true);
+        return {};
+      });
+    } else {
+      const pruneCart = (c) => {
+        let changed = false;
+        const next = {};
+        Object.entries(c).forEach(([k, v]) => {
+          const idx = Number(k);
+          if (idx >= inv.length || hiddenSet.has(idx)) {
+            changed = true;
+            return;
+          }
+          next[k] = v;
+        });
+        return changed ? next : c;
+      };
+      setCart(pruneCart);
+      WINGS.forEach((w) => {
+        if (w === wing) return; // current wing handled via setCart above
+        const stored = loadJSON(cartKey(w), {});
+        const pruned = pruneCart(stored);
+        if (pruned !== stored) {
+          try { localStorage.setItem(cartKey(w), JSON.stringify(pruned)); } catch {}
+        }
+      });
+    }
+    try { localStorage.setItem(BASELINE_STAMP_KEY, stamp); } catch {}
+  }, [overridesLoaded, overrides, inv.length, hiddenSet]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function addToCart(idx) {
     setCart((c) => ({ ...c, [idx]: (Number(c[idx]) || 0) + 1 }));
@@ -3059,6 +3115,12 @@ export default function SupplyMatch() {
           <div className="cart-head">
             <div className="ch-t"><ShoppingCart size={17} /> This wing's order</div>
             <div className="ch-s">Items are saved on this computer as you go — close and come back, they'll still be here.</div>
+            {cartResetNotice && (
+              <div className="savemsg info" style={{ marginTop: 10 }}>
+                <AlertTriangle size={13} style={{ verticalAlign: "-2px" }} />{" "}
+                The inventory was updated this month, so this wing's order was cleared. Please re-add the items you need.
+              </div>
+            )}
           </div>
 
           <div className="orderfields">
