@@ -1993,6 +1993,14 @@ function normCode(s) {
   return (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
+// Stable key used to store/retrieve image overrides for any item. Prefers the
+// product code; falls back to the description so codeless items can still have
+// admin-set images without colliding with each other.
+function itemImgKey(item) {
+  const byCode = normCode((item || {}).code || "");
+  return byCode || ("desc_" + normCode((item || {}).desc || ""));
+}
+
 const MANIFEST_URL = "/images/MANIFEST.json";
 
 // ---- Order / cart system ----
@@ -2182,8 +2190,7 @@ export default function SupplyMatch() {
     setAdminHidden(new Set(overrides.hidden));
     setAdminAdded(overrides.added);
     if (selIdx !== null) {
-      const code = normCode((inv[selIdx] || {}).code);
-      const fresh = code ? ((overrides.images || {})[code] || "") : "";
+      const fresh = (overrides.images || {})[itemImgKey(inv[selIdx])] || "";
       setAdminImgDraft(fresh);
       setAdminImgStatus(fresh ? "saved" : "idle");
     }
@@ -2873,19 +2880,18 @@ export default function SupplyMatch() {
     setImgIdx(0);
     setDraftUrl(manualUrls[idx] || "");
     setUrlStatus(manualUrls[idx] ? "saved" : "idle");
-    const code = idx !== null ? normCode((inv[idx] || {}).code) : "";
-    const existing = code ? ((overrides.images || {})[code] || "") : "";
+    const existing = idx !== null ? ((overrides.images || {})[itemImgKey(inv[idx])] || "") : "";
     setAdminImgDraft(existing);
     setAdminImgStatus(existing ? "saved" : "idle");
   }
 
   const adminImgCheckSeq = useRef(0);
   async function saveAdminImage(url) {
-    const code = selIdx !== null ? normCode((inv[selIdx] || {}).code) : "";
-    if (!code) return;
+    if (selIdx === null) return;
+    const key = itemImgKey(inv[selIdx]);
     setAdminImgStatus("saving");
-    const updatedImages = { ...(overrides.images || {}), [code]: url || undefined };
-    if (!url) delete updatedImages[code];
+    const updatedImages = { ...(overrides.images || {}), [key]: url || undefined };
+    if (!url) delete updatedImages[key];
     try {
       const res = await fetch("/api/inventory", {
         method: "POST",
@@ -2913,9 +2919,8 @@ export default function SupplyMatch() {
   useEffect(() => {
     if (selIdx === null || !isAdmin) return;
     const url = adminImgDraft.trim();
-    const code = normCode((inv[selIdx] || {}).code);
-    if (!code) return;
-    const current = (overrides.images || {})[code] || "";
+    const key = itemImgKey(inv[selIdx]);
+    const current = (overrides.images || {})[key] || "";
 
     if (!url) {
       if (current) saveAdminImage("");
@@ -2950,7 +2955,7 @@ export default function SupplyMatch() {
       "Product", "Manufacturer", "Image URL",
     ];
     const lines = inv.map((it, i) => {
-      const imgUrl = manualUrls[i] || (overrides.images || {})[normCode(it.code)] || it.imageUrl || it.imageFallback || manifestMap[normCode(it.code)] || "";
+      const imgUrl = manualUrls[i] || (overrides.images || {})[itemImgKey(it)] || it.imageUrl || it.imageFallback || manifestMap[normCode(it.code || "")] || "";
       return [
         it.storage, it.category, it.code, it.desc, it.unit, it.stock,
         it.productName || "", it.manufacturer || "", imgUrl,
@@ -2972,9 +2977,9 @@ export default function SupplyMatch() {
   // admin-set permanent override, then the curated remote URL / local backup,
   // then a fallback match against public/images by product code. The <img>
   // walks this list on load errors.
-  const adminImageOverride = item ? (overrides.images || {})[normCode(item.code)] : null;
+  const adminImageOverride = item ? (overrides.images || {})[itemImgKey(item)] : null;
   const imgCandidates = item
-    ? [manualUrls[selIdx], adminImageOverride, item.imageUrl, item.imageFallback, manifestMap[normCode(item.code)]]
+    ? [manualUrls[selIdx], adminImageOverride, item.imageUrl, item.imageFallback, manifestMap[normCode(item.code || "")]]
         .filter(Boolean)
         .filter((u, i, a) => a.indexOf(u) === i)
     : [];
@@ -3097,7 +3102,7 @@ export default function SupplyMatch() {
                   <div className="lookup-body">
                     <div className="resolve">
                       <span className="rl">Product</span>
-                      <span className="rv">{item.productName || "Unidentified"}</span>
+                      <span className="rv">{item.productName || item.desc || "Unidentified"}</span>
                       {item.manufacturer && item.manufacturer !== "unknown" && (
                         <span className="rm">Brand / Manufacturer: {item.manufacturer}</span>
                       )}
@@ -3165,10 +3170,13 @@ export default function SupplyMatch() {
                             value={adminImgDraft}
                             onChange={(e) => { setAdminImgDraft(e.target.value); setAdminImgStatus("idle"); }}
                           />
-                          {adminImgDraft.trim() && (overrides.images || {})[normCode(item.code)] && (
+                          {adminImgDraft.trim() && (overrides.images || {})[itemImgKey(item)] && (
                             <button className="btn" title="Remove permanent image override" onClick={() => setAdminImgDraft("")}>
                               <Eraser size={14} /> Reset
                             </button>
+                          )}
+                          {!item.code && (
+                            <div className="hint" style={{ color: "var(--amber)" }}>This item has no product code — image is keyed by description.</div>
                           )}
                         </div>
                         {adminImgStatus === "checking" && (
