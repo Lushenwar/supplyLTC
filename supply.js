@@ -1987,6 +1987,14 @@ function loadOverrides() {
   }
 }
 
+// Normalizes a product code for matching across sources that format the same
+// code slightly differently (e.g. "163-05031-105\517SDML" vs "163-05031-105/517sdml").
+function normCode(s) {
+  return (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+const MANIFEST_URL = "/images/MANIFEST.json";
+
 // ---- Order / cart system ----
 // Wings that can place an order (each has its own shared computer + Excel tab).
 // "All Items-RPN" is the master reference tab and is intentionally not orderable.
@@ -2058,6 +2066,8 @@ export default function SupplyMatch() {
   const [draftUrl, setDraftUrl] = useState("");                // what's currently typed in the box
   const [urlStatus, setUrlStatus] = useState("idle");          // idle | checking | saved | error
   const [imgIdx, setImgIdx] = useState(0);                     // which image candidate is showing (for auto-fallback)
+  const [adminImgDraft, setAdminImgDraft] = useState("");      // admin permanent image URL input
+  const [adminImgStatus, setAdminImgStatus] = useState("idle"); // idle | checking | saved | error | saving
 
   // ---- Admin mode state ----
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === ADMIN_PASSCODE);
@@ -2097,17 +2107,18 @@ export default function SupplyMatch() {
   // keyed by INVENTORY array index (so item order/template-row mapping never
   // shifts), a list of hidden indices (soft "remove"), and admin-added items
   // (appended after INVENTORY, same as the existing app-only extra items).
-  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null });
+  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null });
   const [overridesLoaded, setOverridesLoaded] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
   const refreshOverrides = () =>
     fetch("/api/inventory", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null }))
+      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null }))
       .then((data) => {
         setOverrides({
           stock: data.stock || {},
           hidden: data.hidden || [],
           added: data.added || [],
+          images: data.images || {},
           baseline: Array.isArray(data.baseline) ? data.baseline : null,
           baselineDate: data.baselineDate || null,
           baselineLabel: data.baselineLabel || null,
@@ -2116,6 +2127,24 @@ export default function SupplyMatch() {
       })
       .catch(() => {});
   useEffect(() => { refreshOverrides(); }, []);
+
+  // Built-in product photos in public/images, keyed by normalized product code,
+  // used as a fallback for items whose imageUrl/imageFallback are blank (e.g.
+  // baseline-uploaded items that don't carry curated fields).
+  const [manifestMap, setManifestMap] = useState({});
+  useEffect(() => {
+    fetch(MANIFEST_URL, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => {
+        const map = {};
+        (Array.isArray(list) ? list : []).forEach((entry) => {
+          const key = normCode(entry.code);
+          if (key && !map[key]) map[key] = entry.imageUrl;
+        });
+        setManifestMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   // The baseline (from a monthly inventory upload) replaces the hardcoded
   // INVENTORY entirely when present. Everything downstream — stock overrides,
@@ -2152,7 +2181,13 @@ export default function SupplyMatch() {
     setAdminStockEdits(overrides.stock);
     setAdminHidden(new Set(overrides.hidden));
     setAdminAdded(overrides.added);
-  }, [overrides]);
+    if (selIdx !== null) {
+      const code = normCode((inv[selIdx] || {}).code);
+      const fresh = code ? ((overrides.images || {})[code] || "") : "";
+      setAdminImgDraft(fresh);
+      setAdminImgStatus(fresh ? "saved" : "idle");
+    }
+  }, [overrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const adminInv = useMemo(() => {
     const base = baseInventory.map((it, i) => (adminStockEdits[i] != null ? { ...it, stock: adminStockEdits[i] } : it));
@@ -2205,6 +2240,7 @@ export default function SupplyMatch() {
           stock: adminStockEdits,
           hidden: Array.from(adminHidden),
           added: adminAdded,
+          images: overrides.images,
           baseline: overrides.baseline,
           baselineDate: overrides.baselineDate,
           baselineLabel: overrides.baselineLabel,
@@ -2417,7 +2453,7 @@ export default function SupplyMatch() {
   }, [manualUrls]);
 
   // Restart at the first image candidate when the item or its override changes.
-  useEffect(() => { setImgIdx(0); }, [selIdx, manualUrls[selIdx]]);
+  useEffect(() => { setImgIdx(0); }, [selIdx, manualUrls[selIdx], overrides.images, manifestMap]);
 
   // Validate the typed URL and only commit it as an override once it actually
   // loads as an image. A broken link never replaces the working built-in image.
@@ -2837,7 +2873,75 @@ export default function SupplyMatch() {
     setImgIdx(0);
     setDraftUrl(manualUrls[idx] || "");
     setUrlStatus(manualUrls[idx] ? "saved" : "idle");
+    const code = idx !== null ? normCode((inv[idx] || {}).code) : "";
+    const existing = code ? ((overrides.images || {})[code] || "") : "";
+    setAdminImgDraft(existing);
+    setAdminImgStatus(existing ? "saved" : "idle");
   }
+
+  const adminImgCheckSeq = useRef(0);
+  async function saveAdminImage(url) {
+    const code = selIdx !== null ? normCode((inv[selIdx] || {}).code) : "";
+    if (!code) return;
+    setAdminImgStatus("saving");
+    const updatedImages = { ...(overrides.images || {}), [code]: url || undefined };
+    if (!url) delete updatedImages[code];
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode: adminPasscode,
+          stock: overrides.stock,
+          hidden: overrides.hidden,
+          added: overrides.added,
+          images: updatedImages,
+          baseline: overrides.baseline,
+          baselineDate: overrides.baselineDate,
+          baselineLabel: overrides.baselineLabel,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Server error");
+      await refreshOverrides();
+      setAdminImgStatus("saved");
+    } catch {
+      setAdminImgStatus("error");
+    }
+  }
+
+  // Validate admin image URL then persist to server.
+  useEffect(() => {
+    if (selIdx === null || !isAdmin) return;
+    const url = adminImgDraft.trim();
+    const code = normCode((inv[selIdx] || {}).code);
+    if (!code) return;
+    const current = (overrides.images || {})[code] || "";
+
+    if (!url) {
+      if (current) saveAdminImage("");
+      else setAdminImgStatus("idle");
+      return;
+    }
+    if (current === url) {
+      setAdminImgStatus("saved");
+      return;
+    }
+    setAdminImgStatus("checking");
+    const seq = ++adminImgCheckSeq.current;
+    const handle = setTimeout(() => {
+      const img = new Image();
+      img.onload = () => {
+        if (seq !== adminImgCheckSeq.current) return;
+        saveAdminImage(url);
+      };
+      img.onerror = () => {
+        if (seq !== adminImgCheckSeq.current) return;
+        setAdminImgStatus("error");
+      };
+      img.src = url;
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [adminImgDraft, selIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function exportCsv() {
     const cell = (x) => '"' + (x == null ? "" : String(x)).replace(/"/g, '""') + '"';
@@ -2846,7 +2950,7 @@ export default function SupplyMatch() {
       "Product", "Manufacturer", "Image URL",
     ];
     const lines = inv.map((it, i) => {
-      const imgUrl = manualUrls[i] || it.imageUrl || "";
+      const imgUrl = manualUrls[i] || (overrides.images || {})[normCode(it.code)] || it.imageUrl || it.imageFallback || manifestMap[normCode(it.code)] || "";
       return [
         it.storage, it.category, it.code, it.desc, it.unit, it.stock,
         it.productName || "", it.manufacturer || "", imgUrl,
@@ -2864,10 +2968,13 @@ export default function SupplyMatch() {
     URL.revokeObjectURL(url);
   }
 
-  // Ordered image candidates: a per-computer override (if any), then the default
-  // remote URL, then the local backup. The <img> walks this list on load errors.
+  // Ordered image candidates: a per-computer override (if any), then the
+  // admin-set permanent override, then the curated remote URL / local backup,
+  // then a fallback match against public/images by product code. The <img>
+  // walks this list on load errors.
+  const adminImageOverride = item ? (overrides.images || {})[normCode(item.code)] : null;
   const imgCandidates = item
-    ? [manualUrls[selIdx], item.imageUrl, item.imageFallback]
+    ? [manualUrls[selIdx], adminImageOverride, item.imageUrl, item.imageFallback, manifestMap[normCode(item.code)]]
         .filter(Boolean)
         .filter((u, i, a) => a.indexOf(u) === i)
     : [];
@@ -3047,6 +3154,43 @@ export default function SupplyMatch() {
                     )}
                     {urlStatus === "idle" && (
                       <div className="hint">Paste a direct image URL. It's only saved once it successfully loads, so a bad link never replaces a working picture. Saved on this computer.</div>
+                    )}
+
+                    {isAdmin && (
+                      <div style={{ marginTop: 18, borderTop: "1px solid var(--line2)", paddingTop: 14 }}>
+                        <div className="flabel" style={{ marginBottom: 8 }}>Permanent image (admin · all devices)</div>
+                        <div className="urlrow">
+                          <input
+                            placeholder="Paste a permanent image URL to save for all kiosks"
+                            value={adminImgDraft}
+                            onChange={(e) => { setAdminImgDraft(e.target.value); setAdminImgStatus("idle"); }}
+                          />
+                          {adminImgDraft.trim() && (overrides.images || {})[normCode(item.code)] && (
+                            <button className="btn" title="Remove permanent image override" onClick={() => setAdminImgDraft("")}>
+                              <Eraser size={14} /> Reset
+                            </button>
+                          )}
+                        </div>
+                        {adminImgStatus === "checking" && (
+                          <div className="hint" style={{ color: "var(--soft)" }}>Checking that the image loads…</div>
+                        )}
+                        {adminImgStatus === "saving" && (
+                          <div className="hint" style={{ color: "var(--soft)" }}>Saving for all kiosks…</div>
+                        )}
+                        {adminImgStatus === "saved" && adminImgDraft.trim() && (
+                          <div className="hint" style={{ color: "var(--green)", fontWeight: 600 }}>
+                            <Check size={13} style={{ verticalAlign: "-2px" }} /> Saved permanently — visible on all kiosks after reload.
+                          </div>
+                        )}
+                        {adminImgStatus === "error" && (
+                          <div className="hint" style={{ color: "var(--red)", fontWeight: 600 }}>
+                            <AlertTriangle size={13} style={{ verticalAlign: "-2px" }} /> That URL didn't load as an image — try a direct link ending in .jpg/.png.
+                          </div>
+                        )}
+                        {(adminImgStatus === "idle" || (!adminImgDraft.trim() && adminImgStatus !== "saved")) && (
+                          <div className="hint">Paste a permanent image URL. Once saved, it overrides the built-in image for this item on every device. Requires admin login.</div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

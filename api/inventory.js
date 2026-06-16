@@ -11,7 +11,7 @@ import { put, list, del } from "@vercel/blob";
 const BLOB_PREFIX = "inventory-overrides/";
 const ADMIN_PASSCODE = "Sthaa123!";
 
-const EMPTY = { stock: {}, hidden: [], added: [], baseline: null, baselineDate: null, baselineLabel: null };
+const EMPTY = { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null };
 
 async function readOverrides() {
   const { blobs } = await list({ prefix: BLOB_PREFIX });
@@ -24,6 +24,7 @@ async function readOverrides() {
     stock: data.stock || {},
     hidden: data.hidden || [],
     added: data.added || [],
+    images: data.images || {},
     baseline: Array.isArray(data.baseline) ? data.baseline : null,
     baselineDate: data.baselineDate || null,
     baselineLabel: data.baselineLabel || null,
@@ -43,12 +44,15 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { passcode, stock, hidden, added, baseline, baselineDate, baselineLabel } = req.body || {};
+    const { passcode, stock, hidden, added, images, baseline, baselineDate, baselineLabel } = req.body || {};
     if (passcode !== ADMIN_PASSCODE) {
       return res.status(401).json({ error: "Invalid passcode" });
     }
     if (!stock || typeof stock !== "object" || !Array.isArray(hidden) || !Array.isArray(added)) {
       return res.status(400).json({ error: "Missing or invalid inventory data" });
+    }
+    if (images !== undefined && (typeof images !== "object" || images === null || Array.isArray(images))) {
+      return res.status(400).json({ error: "Invalid image overrides" });
     }
     if (baseline !== undefined && baseline !== null && !Array.isArray(baseline)) {
       return res.status(400).json({ error: "Invalid baseline inventory" });
@@ -61,6 +65,7 @@ export default async function handler(req, res) {
           stock,
           hidden,
           added,
+          images: images || {},
           baseline: baseline ?? null,
           baselineDate: baselineDate ?? null,
           baselineLabel: baselineLabel ?? null,
