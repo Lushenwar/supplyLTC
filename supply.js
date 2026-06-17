@@ -2653,50 +2653,29 @@ export default function SupplyMatch() {
     const ws = wb.getWorksheet(wing);
     if (!ws) throw new Error("Wing tab '" + wing + "' not found in template.");
 
-    Object.entries(cart).forEach(([idxStr, qty]) => {
-      const idx = Number(idxStr);
-      const q = Number(qty);
-      if (!q || idx > templateLastIndex) return;
-      ws.getCell("H" + (idx + TEMPLATE_FIRST_ROW)).value = q;
-    });
+    // Capture row style from the first data row before we touch anything.
+    const styleSourceRow = ws.getRow(TEMPLATE_FIRST_ROW);
+    const colStyles = [];
+    for (let c = 1; c <= 9; c++) colStyles.push(styleSourceRow.getCell(c).style);
 
-    // Admin-hidden items still have a pre-printed row in the template — remove
-    // the whole row (bottom-up so earlier row numbers stay valid) so discontinued
-    // items don't leave gaps on the generated order form.
-    Array.from(hiddenSet)
-      .filter((idx) => idx <= templateLastIndex)
-      .sort((a, b) => b - a)
-      .forEach((idx) => ws.spliceRows(idx + TEMPLATE_FIRST_ROW, 1));
-
-    // Items beyond the template's row capacity have no pre-built template
-    // row — this includes admin-added items and, after a monthly baseline
-    // upload, any baseline items past TEMPLATE_ROW_CAPACITY. Always show them
-    // (like every other item), appended right after the last row with actual
-    // content. (Templates can have a trailing blank-but-styled row, which
-    // would otherwise leave a gap before the appended rows.)
-    const addedItems = inv.slice(baseLen);
-    if (addedItems.length) {
-      let lastContentRow = ws.actualRowCount;
-      while (lastContentRow >= TEMPLATE_FIRST_ROW) {
-        let hasContent = false;
-        ws.getRow(lastContentRow).eachCell({ includeEmpty: false }, () => {
-          hasContent = true;
-        });
-        if (hasContent) break;
-        lastContentRow--;
-      }
-      const styleRow = ws.getRow(lastContentRow);
-      const styles = [];
-      for (let c = 1; c <= 9; c++) styles.push(styleRow.getCell(c).style);
-      addedItems.forEach((it, i) => {
-        const idx = baseLen + i;
-        const q = Number(cart[idx]) || "";
-        const row = ws.getRow(lastContentRow + 1 + i);
-        row.values = [it.storage, it.category, it.code, it.desc, it.unit, it.stock, "", q, ""];
-        for (let c = 1; c <= 9; c++) row.getCell(c).style = styles[c - 1];
-        row.commit();
-      });
+    // Remove every existing data row so we can rebuild from the live inv array.
+    // This ensures deleted/recategorised items are always reflected accurately.
+    const totalRows = ws.rowCount;
+    if (totalRows >= TEMPLATE_FIRST_ROW) {
+      ws.spliceRows(TEMPLATE_FIRST_ROW, totalRows - TEMPLATE_FIRST_ROW + 1);
     }
+
+    // Write one row per visible item from the current inventory.
+    let rowNum = TEMPLATE_FIRST_ROW;
+    inv.forEach((it, idx) => {
+      if (hiddenSet.has(idx)) return;
+      const q = Number(cart[idx]) || "";
+      const row = ws.getRow(rowNum);
+      row.values = [it.storage, it.category || "", it.code || "", it.desc, it.unit || "", it.stock || "", "", q, ""];
+      for (let c = 1; c <= 9; c++) row.getCell(c).style = colStyles[c - 1];
+      row.commit();
+      rowNum++;
+    });
 
     // Keep only this wing's tab so the file isn't the whole 11-sheet workbook.
     wb.worksheets.slice().forEach((s) => {
