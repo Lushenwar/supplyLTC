@@ -1685,7 +1685,7 @@ const INVENTORY = [
   {
     "storage": "7W Record RM",
     "code": "DEX4-GLUC",
-    "category": "Wound care",
+    "category": "Medication",
     "desc": "DEX4 fast acting glucose 4g 10 tablets",
     "unit": "EA",
     "stock": "",
@@ -1749,7 +1749,7 @@ input,select,textarea{font-family:inherit}
 .count{font-size:11.5px;color:var(--faint);margin-top:9px;letter-spacing:.02em;text-transform:uppercase;font-weight:600}
 
 .rows{flex:1;overflow:auto}
-.itemrow{display:flex;align-items:flex-start;gap:11px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line2);padding:12px 14px;transition:background .1s}
+.itemrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line2);padding:10px 14px;transition:background .1s;cursor:pointer}
 .itemrow:hover{background:#F5F8F8}
 .itemrow.active{background:var(--teal-soft)}
 .itemrow.active .code{color:var(--teal-d)}
@@ -1825,10 +1825,13 @@ input,select,textarea{font-family:inherit}
 .savedline{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft);margin-top:13px}
 
 @media (max-width:860px){
+  .body{flex-direction:column}
   .list{width:100%}
-  .detail{position:absolute;inset:0;background:var(--bg);display:none}
+  .body .cartside{width:100%;border-left:none;border-top:1px solid var(--line)}
+  .detail{position:absolute;inset:0;background:var(--bg);display:none;z-index:10}
   .wrap.detail-open .list{display:none}
   .wrap.detail-open .detail{display:block}
+  .wrap.detail-open .cartside{display:none}
   .back{display:inline-flex}
   .sub{display:none}
 }
@@ -1842,13 +1845,7 @@ input,select,textarea{font-family:inherit}
 .modetoggle button.on{background:var(--surface);color:var(--teal-d);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 
 /* ---- order mode ---- */
-.orderbody{flex:1;display:flex;min-height:0}
-.ordermain{flex:1;display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--surface)}
 .cartside{width:392px;flex-shrink:0;background:var(--surface);display:flex;flex-direction:column;min-height:0}
-.orow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border-bottom:1px solid var(--line2);padding:11px 14px}
-.orow:hover{background:#F5F8F8}
-.orow.incart{background:var(--teal-soft)}
-.orow .rowmain{min-width:0;flex:1}
 .qctrl{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .qbtn{width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
 .qbtn:hover{background:#F4F7F7}
@@ -1951,8 +1948,6 @@ input,select,textarea{font-family:inherit}
 }
 
 @media (max-width:860px){
-  .orderbody{flex-direction:column}
-  .ordermain{border-right:none;border-bottom:1px solid var(--line)}
   .cartside{width:100%}
 }
 `;
@@ -2087,13 +2082,12 @@ export default function SupplyMatch() {
   }
 
   // ---- Order mode state ----
-  const [mode, setMode] = useState("verify"); // "verify" | "order" | "admin"
+  const [mode, setMode] = useState("order"); // "order" | "admin"
   const [wing, setWing] = useState(() => loadJSON(ORDER_WING_KEY, ""));
   const [nurseName, setNurseName] = useState(() => loadJSON(ORDER_NAME_KEY, ""));
   const [cart, setCart] = useState(() => loadJSON(cartKey(loadJSON(ORDER_WING_KEY, "")), {})); // { invIdx: qty }
   const [lastSubmitted, setLastSubmitted] = useState(() => loadJSON(submittedKey(loadJSON(ORDER_WING_KEY, "")), null));
-  const [orderQuery, setOrderQuery] = useState("");
-  const [orderCatF, setOrderCatF] = useState("All");
+
   const [saveStatus, setSaveStatus] = useState(""); // "", "working", "saved", "downloaded", "error"
   const [saveMsg, setSaveMsg] = useState("");
   const [showFieldErrors, setShowFieldErrors] = useState(false); // true once the nurse tries to save/print with missing fields
@@ -2474,20 +2468,6 @@ export default function SupplyMatch() {
     [cart, inv]
   );
   const cartTotalUnits = useMemo(() => cartLines.reduce((s, l) => s + l.qty, 0), [cartLines]);
-  const orderCategories = useMemo(
-    () => ["All", ...Array.from(new Set(inv.map((i) => i.category).filter(Boolean)))],
-    [inv]
-  );
-  const orderFiltered = useMemo(() => {
-    const q = orderQuery.trim().toLowerCase();
-    return inv.map((it, idx) => [idx, it]).filter(([idx, it]) => {
-      if (hiddenSet.has(idx)) return false;
-      if (orderCatF !== "All" && it.category !== orderCatF) return false;
-      if (q && !((it.code || "").toLowerCase().includes(q) || (it.desc || "").toLowerCase().includes(q)))
-        return false;
-      return true;
-    });
-  }, [orderQuery, orderCatF, inv, hiddenSet]);
 
   // Persist overrides to localStorage whenever they change.
   useEffect(() => {
@@ -3034,37 +3014,36 @@ export default function SupplyMatch() {
           <div>
             <div className="title">Supply Match</div>
             <div className="sub">
-              {mode === "verify" ? "Browse items, check the picture, and manage product images"
-                : mode === "admin" ? "Admin — manage stock and inventory"
-                : "Build this wing's order, then save or print it"}
+              {mode === "admin" ? "Admin — manage stock and inventory"
+                : "Browse and add items to this wing's order"}
             </div>
           </div>
         </div>
         <div className="topright">
           <div className="modetoggle">
-            <button className={mode === "verify" ? "on" : ""} onClick={() => setMode("verify")}>Items</button>
             <button className={mode === "order" ? "on" : ""} onClick={() => setMode("order")}>Order</button>
             {isAdmin && (
               <button className={mode === "admin" ? "on" : ""} onClick={() => setMode("admin")}>Admin</button>
             )}
           </div>
-          {mode === "verify" ? (
-            <button className="btn" onClick={exportCsv}><Download size={15} /> Export</button>
-          ) : mode === "order" ? (
-            <div className="progress">
-              <div>Unit <b>{wing || "—"}</b> · <b>{cartLines.length}</b> item{cartLines.length === 1 ? "" : "s"}</div>
-              <div style={{ marginTop: 2 }}>{cartTotalUnits} unit{cartTotalUnits === 1 ? "" : "s"} to order</div>
-            </div>
-          ) : null}
+          {mode === "order" && (
+            <>
+              <button className="btn" onClick={exportCsv}><Download size={15} /> Export</button>
+              <div className="progress">
+                <div>Unit <b>{wing || "—"}</b> · <b>{cartLines.length}</b> item{cartLines.length === 1 ? "" : "s"}</div>
+                <div style={{ marginTop: 2 }}>{cartTotalUnits} unit{cartTotalUnits === 1 ? "" : "s"} to order</div>
+              </div>
+            </>
+          )}
           <button className="btn" title={isAdmin ? "Exit admin mode" : "Admin login"} onClick={handleAdminClick}>
             {isAdmin ? <Unlock size={15} /> : <Lock size={15} />} {isAdmin ? "Exit admin" : "Admin"}
           </button>
         </div>
       </header>
 
-      {mode === "verify" && (
+      {mode === "order" && (
       <div className="body">
-        {/* LIST */}
+        {/* ITEM LIST */}
         <section className="list">
           <div className="tools">
             <div className="searchwrap">
@@ -3087,18 +3066,38 @@ export default function SupplyMatch() {
           </div>
           <div className="rows">
             {filtered.map(([idx, it]) => {
+              const qty = Number(cart[idx]) || 0;
               return (
-                <button
+                <div
                   key={idx}
-                  className={"itemrow" + (idx === selIdx ? " active" : "")}
+                  className={"itemrow" + (idx === selIdx ? " active" : "") + (qty > 0 ? " incart" : "")}
                   onClick={() => selectItem(idx)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && selectItem(idx)}
                 >
                   <span className="rowmain">
-                    <span className="code">{it.code || "— no code —"}</span>
+                    <span className="code">{it.code || "— no code —"}{qty > 0 && <span className="miniflag">In order ×{qty}</span>}</span>
                     <span className="desc">{it.desc}</span>
                     <span className="chip">{it.category || "Uncategorized"}</span>
                   </span>
-                </button>
+                  {qty > 0 ? (
+                    <div className="qctrl" onClick={(e) => e.stopPropagation()}>
+                      <button className="qbtn" title="Less" onClick={(e) => { e.stopPropagation(); setCartQty(idx, qty - 1); }}><Minus size={15} /></button>
+                      <input
+                        className="qnum"
+                        type="number"
+                        min="0"
+                        value={qty}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setCartQty(idx, e.target.value)}
+                      />
+                      <button className="qbtn" title="More" onClick={(e) => { e.stopPropagation(); setCartQty(idx, qty + 1); }}><Plus size={15} /></button>
+                    </div>
+                  ) : (
+                    <button className="addbtn" onClick={(e) => { e.stopPropagation(); addToCart(idx); }}><Plus size={14} /> Add</button>
+                  )}
+                </div>
               );
             })}
             {filtered.length === 0 && (
@@ -3112,7 +3111,7 @@ export default function SupplyMatch() {
           {item === null ? (
             <div className="placeholder">
               <div className="ring"><PackageSearch size={28} /></div>
-              <div>Pick an item on the left to view its details and image.</div>
+              <div>Click any item to view its details and image.</div>
             </div>
           ) : (
             <>
@@ -3244,61 +3243,6 @@ export default function SupplyMatch() {
               </div>
             </>
           )}
-        </section>
-      </div>
-      )}
-
-      {mode === "order" && (
-      <div className="orderbody">
-        {/* ITEM PICKER */}
-        <section className="ordermain">
-          <div className="tools">
-            <div className="searchwrap">
-              <Search size={17} />
-              <input
-                placeholder="Search code or description to add"
-                value={orderQuery}
-                onChange={(e) => setOrderQuery(e.target.value)}
-              />
-            </div>
-            <div className="filters">
-              <select value={orderCatF} onChange={(e) => setOrderCatF(e.target.value)}>
-                {orderCategories.map((c) => <option key={c} value={c}>{c === "All" ? "All categories" : c}</option>)}
-              </select>
-            </div>
-            <div className="count">{orderFiltered.length} item{orderFiltered.length === 1 ? "" : "s"}</div>
-          </div>
-          <div className="rows">
-            {orderFiltered.map(([idx, it]) => {
-              const qty = Number(cart[idx]) || 0;
-              return (
-                <div key={idx} className={"orow" + (qty > 0 ? " incart" : "")}>
-                  <span className="rowmain">
-                    <span className="code">{it.code || "— no code —"}{qty > 0 && <span className="miniflag">In order ×{qty}</span>}</span>
-                    <span className="desc">{it.desc}</span>
-                  </span>
-                  {qty > 0 ? (
-                    <div className="qctrl">
-                      <button className="qbtn" title="Less" onClick={() => setCartQty(idx, qty - 1)}><Minus size={15} /></button>
-                      <input
-                        className="qnum"
-                        type="number"
-                        min="0"
-                        value={qty}
-                        onChange={(e) => setCartQty(idx, e.target.value)}
-                      />
-                      <button className="qbtn" title="More" onClick={() => setCartQty(idx, qty + 1)}><Plus size={15} /></button>
-                    </div>
-                  ) : (
-                    <button className="addbtn" onClick={() => addToCart(idx)}><Plus size={14} /> Add</button>
-                  )}
-                </div>
-              );
-            })}
-            {orderFiltered.length === 0 && (
-              <div className="empty-list">No items match your search.</div>
-            )}
-          </div>
         </section>
 
         {/* CART */}
