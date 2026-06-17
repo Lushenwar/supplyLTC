@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+﻿import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search, Check, AlertTriangle, ExternalLink, Download,
   ChevronLeft, ImageOff, PackageSearch, Eraser,
@@ -1192,7 +1192,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "41FK14",
     "desc": "Covid Ag (rapid test kit)",
     "unit": "EA",
@@ -1204,7 +1204,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "390036",
     "desc": "Enteric outbreak kit (green & white containers)",
     "unit": "EA",
@@ -1216,7 +1216,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "365017",
     "desc": "LAB BD Vacutainer UA Preservative Tube (yellow small tube)",
     "unit": "EA",
@@ -1228,7 +1228,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "DIS028",
     "desc": "LAB BIOHAZARD BAG W/ Pouch 6''x9''X2mil",
     "unit": "pk",
@@ -1240,7 +1240,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "GW-1237NP",
     "desc": "LAB Nasopharyngeal Swab 6''x2.5mm Sterile",
     "unit": "pk",
@@ -1252,7 +1252,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "03008-11",
     "desc": "LAB ST RPLEX   Container 90ML  (Orange Lid )",
     "unit": "EA",
@@ -1264,7 +1264,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "3C0-47N",
     "desc": "LAB UTM Transport & Preservation Medium For Virak Molecular Diagnostic Testing (PCR)",
     "unit": "EA",
@@ -1277,7 +1277,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "BOTT-EPT",
     "desc": "Stool collection device c/s (FECAL SWAB)",
     "unit": "EA",
@@ -1289,7 +1289,7 @@ const INVENTORY = [
   },
   {
     "storage": "3W",
-    "category": "Wound care",
+    "category": "Lab",
     "code": "M40/SWAB-CLEA-AMI01",
     "desc": "swab clear amiles (general culture), in foil paper bag",
     "unit": "EA",
@@ -1301,7 +1301,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6528-1011-2",
     "desc": "Acetaminophen 500 mg Tab  (Tylenol) APOTEX",
     "unit": "EA",
@@ -1314,7 +1314,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6528-1010-2",
     "desc": "Acetaminophen 325 mg Tab  (Tylenol) TEVA",
     "unit": "EA",
@@ -1327,7 +1327,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6572-1717-2",
     "desc": "Analgesic Rub, Muscle & Joint Pain Relief Heat Cream, Extra Strength 100g",
     "unit": "EA",
@@ -1339,7 +1339,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6554-1503-0",
     "desc": "Aluminum Hydroxide 64 mg/mL O/L, 425mL, Alugel",
     "unit": "EA",
@@ -1351,7 +1351,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6554-1505-0",
     "desc": "Magnesium Hydroxide 80 mg/mL O/L, 500mL, milk magnesia",
     "unit": "EA",
@@ -1364,7 +1364,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6554-1509-0",
     "desc": "Aluminum Hydroxide & Magnesium Hydroxide & Dimethylpolysiloxane 40 mg & 40 mg & 5 mg/mL O/L 350ml (Almagel)",
     "unit": "EA",
@@ -1377,7 +1377,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6501-1006-0",
     "desc": "Cypropheptadine HCl 4 mg Tab JAMP",
     "unit": "EA",
@@ -1389,7 +1389,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6501-1008-2",
     "desc": "Chlorpheniramine Maleate 4 mg Tab TEVA",
     "unit": "EA",
@@ -1401,7 +1401,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6557-1001-1",
     "desc": "Dimenhydrinate 50 mg Tab",
     "unit": "EA",
@@ -1414,7 +1414,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1401-0",
     "desc": "bisacodyl odan 5mg Tablet",
     "unit": "EA",
@@ -1426,7 +1426,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1401-0-SUP",
     "desc": "bisacodyl 10 mg Sup DULCOLAX",
     "unit": "EA",
@@ -1438,7 +1438,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1402-0",
     "desc": "Colace Glycerin Suppositories, 24supporitories",
     "unit": "EA",
@@ -1450,7 +1450,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1901-3",
     "desc": "Enema Sodium Biphosphate & Sodium Phosphate 160 mg & 60 mg/mL Fleet Enema",
     "unit": "EA",
@@ -1462,7 +1462,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1004-1",
     "desc": "Sennosides A and B 8.6 mg Tab 1000 tablets",
     "unit": "EA",
@@ -1475,7 +1475,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1004-1-100",
     "desc": "Sennosides A and B 8.6 mg Tab 100 tablets",
     "unit": "EA",
@@ -1487,7 +1487,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1605-0",
     "desc": "Meta Fibre Psyllium Mucilloid Oral Pd Mucillium",
     "unit": "EA",
@@ -1499,7 +1499,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1104-0",
     "desc": "Taro-Docusate Sodium 100 mg Cap Soflax 1000 tablets",
     "unit": "EA",
@@ -1511,7 +1511,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6556-1503-0",
     "desc": "Cascara Sagrada O/L, 500ml",
     "unit": "EA",
@@ -1524,7 +1524,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6544-1504-1",
     "desc": "Guaifenesin 20 mg/mL O/L  250ML (Orange bottle)",
     "unit": "EA",
@@ -1536,7 +1536,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6544-1508-1",
     "desc": "Bronchophan forte DM 15mg/5ml, dextromethorphan hydrobromide syrup TEVA 250ML",
     "unit": "EA",
@@ -1548,7 +1548,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6572-1715-0",
     "desc": "Life brand Calamine Lotion 250ml",
     "unit": "EA",
@@ -1560,7 +1560,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6572-1730-0",
     "desc": "Silicone 20% Cream Barrier Cream",
     "unit": "EA",
@@ -1572,7 +1572,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6572-0502-0",
     "desc": "Alcohol 70%",
     "unit": "EA",
@@ -1585,7 +1585,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6572-1713-1",
     "desc": "White Petroleum Ointment vaseline jelly",
     "unit": "EA",
@@ -1597,7 +1597,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6572-1710-2",
     "desc": "Zinc Oxide 15% Ointment",
     "unit": "EA",
@@ -1609,7 +1609,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6537-1102-0",
     "desc": "Potassium Chloride 600 mg LA Cap (8 mEq)",
     "unit": "EA",
@@ -1622,7 +1622,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6537-1004-0",
     "desc": "Potassium Chloride 600 mg LA Tab (8 mEq)",
     "unit": "EA",
@@ -1634,7 +1634,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6537-1505-0",
     "desc": "Potassium Chloride 20 mEq/15mL, oral solution 500ML  ODAN",
     "unit": "EA",
@@ -1646,7 +1646,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6572-1752-0",
     "desc": "ANNSOL Zinc Sulphate 0.5% Ointment Anuzine Oint.",
     "unit": "EA",
@@ -1658,7 +1658,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6552-1803-0",
     "desc": "Eyedrop Methylcellulose 0.5% Oph Sol",
     "unit": "EA",
@@ -1671,7 +1671,7 @@ const INVENTORY = [
   },
   {
     "storage": "7W Record RM",
-    "category": "Wound care",
+    "category": "Medication",
     "code": "6552-1804-0",
     "desc": "Eyedrop Methylcellulose 1% Oph Sol",
     "unit": "EA",
@@ -1694,18 +1694,6 @@ const INVENTORY = [
     "suggestedStatus": "match",
     "imageUrl": "https://cdn-tp2.mozu.com/28945-m4/cms/files/L1153600.jpg",
     "imageFallback": "/images/dex4-gluc.jpg"
-  },
-  {
-    "storage": "7W Record RM",
-    "code": "LACT-667",
-    "category": "Wound care",
-    "desc": "Lactulose unflavored 667mg/ml",
-    "unit": "EA",
-    "stock": "",
-    "productName": "Lactulose Oral Solution Unflavored 667mg/mL",
-    "manufacturer": "Unknown",
-    "suggestedStatus": "match",
-    "imageUrl": "/images/lact-667.jpg"
   }
 ];
 
