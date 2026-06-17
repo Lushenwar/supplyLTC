@@ -1768,7 +1768,15 @@ input,select,textarea{font-family:inherit}
 .placeholder .ring{width:64px;height:64px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--teal)}
 .back{display:none;align-items:center;gap:5px;background:none;border:none;color:var(--teal-d);font-size:13px;font-weight:600;padding:14px 14px 0}
 
-.dethead{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.dethead{display:flex;flex-direction:row;align-items:flex-start;gap:14px;margin-bottom:18px}
+.dethead-left{display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+.dethead-cart{flex-shrink:0;display:flex;align-items:flex-start;padding-top:4px}
+.addbtn-lg{display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:14px;font-weight:600;border-radius:9px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;cursor:pointer;white-space:nowrap}
+.addbtn-lg:hover{background:#2a7c7c}
+.qctrl-lg{display:flex;align-items:center;gap:6px}
+.qctrl-lg .qbtn{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.qctrl-lg .qbtn:hover{background:#F4F7F7}
+.qctrl-lg .qnum{width:46px;height:34px;text-align:center;border:1.5px solid var(--line);border-radius:8px;font-size:15px;font-weight:600;background:var(--surface);color:var(--ink)}
 .codebig{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.02em;color:var(--ink);word-break:break-all;line-height:1.15}
 .tags{display:flex;flex-wrap:wrap;gap:7px}
 .tag{font-size:11.5px;font-weight:600;color:var(--soft);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
@@ -3118,12 +3126,25 @@ export default function SupplyMatch() {
               <button className="back" onClick={() => setSelIdx(null)}><ChevronLeft size={17} /> All items</button>
               <div className="detail-inner">
                 <div className="dethead">
-                  <div className="codebig">{item.code || "— no code —"}</div>
-                  <div className="tags">
-                    <span className="tag">{item.storage}</span>
-                    <span className="tag">{item.category || "Uncategorized"}</span>
-                    <span className="tag">Unit {item.unit || "—"}</span>
-                    <span className="tag">Stock {item.stock || "—"}</span>
+                  <div className="dethead-left">
+                    <div className="codebig">{item.code || "— no code —"}</div>
+                    <div className="tags">
+                      <span className="tag">{item.storage}</span>
+                      <span className="tag">{item.category || "Uncategorized"}</span>
+                      <span className="tag">Unit {item.unit || "—"}</span>
+                      <span className="tag">Stock {item.stock || "—"}</span>
+                    </div>
+                  </div>
+                  <div className="dethead-cart">
+                    {Number(cart[selIdx]) > 0 ? (
+                      <div className="qctrl qctrl-lg">
+                        <button className="qbtn" title="Less" onClick={() => setCartQty(selIdx, Number(cart[selIdx]) - 1)}><Minus size={16} /></button>
+                        <input className="qnum" type="number" min="0" value={Number(cart[selIdx])} onChange={(e) => setCartQty(selIdx, e.target.value)} />
+                        <button className="qbtn" title="More" onClick={() => setCartQty(selIdx, Number(cart[selIdx]) + 1)}><Plus size={16} /></button>
+                      </div>
+                    ) : (
+                      <button className="addbtn-lg" onClick={() => addToCart(selIdx)}><Plus size={16} /> Add to order</button>
+                    )}
                   </div>
                 </div>
 
