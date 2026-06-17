@@ -2658,14 +2658,8 @@ export default function SupplyMatch() {
     const colStyles = [];
     for (let c = 1; c <= 9; c++) colStyles.push(styleSourceRow.getCell(c).style);
 
-    // Remove every existing data row so we can rebuild from the live inv array.
-    // This ensures deleted/recategorised items are always reflected accurately.
-    const totalRows = ws.rowCount;
-    if (totalRows >= TEMPLATE_FIRST_ROW) {
-      ws.spliceRows(TEMPLATE_FIRST_ROW, totalRows - TEMPLATE_FIRST_ROW + 1);
-    }
-
-    // Write one row per visible item from the current inventory.
+    // Overwrite data rows from the live inv array (so categories/removals always
+    // reflect the current state). Track where we stop so we can trim the rest.
     let rowNum = TEMPLATE_FIRST_ROW;
     inv.forEach((it, idx) => {
       if (hiddenSet.has(idx)) return;
@@ -2676,6 +2670,12 @@ export default function SupplyMatch() {
       row.commit();
       rowNum++;
     });
+
+    // Remove any leftover template rows beyond our inventory (e.g. deleted items).
+    const lastRow = ws.rowCount;
+    if (lastRow >= rowNum) {
+      ws.spliceRows(rowNum, lastRow - rowNum + 1);
+    }
 
     // Keep only this wing's tab so the file isn't the whole 11-sheet workbook.
     wb.worksheets.slice().forEach((s) => {
