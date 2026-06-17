@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.4.0",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.395.0",

@@ -2414,6 +2414,35 @@ export default function SupplyMatch() {
     setBaselineMsg("");
   }
 
+  async function clearBaseline() {
+    if (!window.confirm("Remove the uploaded baseline and revert to the built-in inventory?")) return;
+    setBaselineStatus("saving");
+    setBaselineMsg("Clearing…");
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode: adminPasscode,
+          stock: {},
+          hidden: [],
+          added: [],
+          images: overrides.images,
+          baseline: null,
+          baselineDate: null,
+          baselineLabel: null,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Server error");
+      await refreshOverrides();
+      setBaselineStatus("saved");
+      setBaselineMsg("Baseline cleared. The built-in inventory is now active on all kiosks.");
+    } catch (err) {
+      setBaselineStatus("error");
+      setBaselineMsg("Couldn't clear: " + (err && err.message ? err.message : err));
+    }
+  }
+
   const storages = useMemo(
     () => ["All", ...Array.from(new Set(inv.map((i) => i.storage).filter(Boolean)))],
     [inv]
@@ -3383,14 +3412,29 @@ export default function SupplyMatch() {
                 At the start of each month, upload the updated inventory spreadsheet (same layout as the order forms — Storage, Category, Code, Descriptions, Unit, Stock level starting at row {TEMPLATE_FIRST_ROW}). It becomes the new baseline for every wing: new items, removed items, and stock-count changes are detected automatically. Existing product photos and details are kept for items that still match by code.
               </p>
             </div>
-            {overrides.baselineLabel && (
-              <div className="baseline-badge">
-                <span className="baseline-badge-label">Current baseline</span>
-                <span className="baseline-badge-file">{overrides.baselineLabel}</span>
-                <span className="baseline-badge-meta">
-                  {baseLen} item{baseLen === 1 ? "" : "s"}
-                  {overrides.baselineDate ? " · uploaded " + new Date(overrides.baselineDate).toLocaleString() : ""}
-                </span>
+            {overrides.baselineLabel ? (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div className="baseline-badge">
+                  <span className="baseline-badge-label">Current baseline</span>
+                  <span className="baseline-badge-file">{overrides.baselineLabel}</span>
+                  <span className="baseline-badge-meta">
+                    {baseLen} item{baseLen === 1 ? "" : "s"}
+                    {overrides.baselineDate ? " · uploaded " + new Date(overrides.baselineDate).toLocaleString() : ""}
+                  </span>
+                </div>
+                <button
+                  className="btn danger"
+                  disabled={baselineStatus === "saving"}
+                  onClick={clearBaseline}
+                  title="Remove the uploaded baseline and revert to the built-in inventory"
+                  style={{ marginTop: 2, flexShrink: 0 }}
+                >
+                  <Trash2 size={14} /> Clear baseline
+                </button>
+              </div>
+            ) : (
+              <div className="savemsg info" style={{ padding: "8px 12px", fontSize: 12.5 }}>
+                No baseline uploaded — showing the built-in inventory.
               </div>
             )}
           </div>
