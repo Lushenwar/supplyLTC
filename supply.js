@@ -2323,6 +2323,27 @@ export default function SupplyMatch() {
         throw new Error("No item rows found (expected data starting at row " + TEMPLATE_FIRST_ROW + ").");
       }
 
+      // Auto-assign stable synthetic codes to rows that have no code so that
+      // image overrides and curated fields survive future re-uploads. Sequential
+      // within this upload so the same items (same sheet position) get the same
+      // NOCODE number on re-upload. Duplicate descriptions within the upload share
+      // one code. The admin is warned and should fix the source Excel.
+      let autoCoded = 0;
+      const autoCodeSeen = new Map();
+      rows.forEach((row) => {
+        if (!row.code) {
+          const seen = autoCodeSeen.get(row.desc);
+          if (seen) {
+            row.code = seen;
+          } else {
+            autoCoded++;
+            const auto = "NOCODE-" + String(autoCoded).padStart(4, "0");
+            row.code = auto;
+            autoCodeSeen.set(row.desc, auto);
+          }
+        }
+      });
+
       // Carry over curated fields (images, product name, manufacturer) from
       // the current inventory for items that still match by code.
       const lookup = new Map();
@@ -2354,11 +2375,12 @@ export default function SupplyMatch() {
         .filter(({ existing, m }) => existing && String(existing.stock ?? "").trim() !== String(m.stock ?? "").trim())
         .map(({ m, existing }) => ({ code: m.code, desc: m.desc, from: existing.stock, to: m.stock }));
 
-      setBaselinePreview({ merged, added, removed, changed, fileName: file.name });
+      setBaselinePreview({ merged, added, removed, changed, autoCoded, fileName: file.name });
       setBaselineStatus("ready");
       setBaselineMsg(
         rows.length + " items parsed — " + added.length + " new, " + removed.length + " removed, " +
-        changed.length + " stock change" + (changed.length === 1 ? "" : "s") + "."
+        changed.length + " stock change" + (changed.length === 1 ? "" : "s") +
+        (autoCoded ? " · " + autoCoded + " item" + (autoCoded === 1 ? "" : "s") + " had no code (auto-assigned NOCODE-XXXX)" : "") + "."
       );
     } catch (err) {
       setBaselineStatus("error");
@@ -3496,6 +3518,12 @@ export default function SupplyMatch() {
                 )}
               </div>
 
+              {baselinePreview.autoCoded > 0 && (
+                <div className="savemsg info" style={{ marginTop: 10 }}>
+                  <AlertTriangle size={13} style={{ verticalAlign: "-2px" }} />{" "}
+                  {baselinePreview.autoCoded} item{baselinePreview.autoCoded === 1 ? "" : "s"} in this file had no product code — synthetic codes (NOCODE-0001, etc.) were auto-assigned so images and overrides stay attached permanently. Please add real codes in the source spreadsheet before next month's upload.
+                </div>
+              )}
               <div className="admin-savebar">
                 <button className="btn primary" disabled={baselineStatus === "saving"} onClick={confirmBaselineUpload}>
                   <Check size={15} /> Replace inventory with this file
