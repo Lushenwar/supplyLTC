@@ -2256,14 +2256,26 @@ export default function SupplyMatch() {
     }
   }
 
-  // Read a cell's value as a trimmed string, unwrapping Excel rich-text runs.
+  // Read a cell's value as a trimmed string, unwrapping Excel rich-text runs
+  // and formula cells (ExcelJS gives { formula, result } instead of a plain
+  // value; result is undefined if the file was saved without recalculating).
   function cellText(row, col) {
     let v = row.getCell(col).value;
+    if (v && typeof v === "object" && "result" in v) v = v.result;
     if (v && typeof v === "object" && Array.isArray(v.richText)) {
       v = v.richText.map((t) => t.text).join("");
     }
-    if (v == null) return "";
+    if (v == null || typeof v === "object") return "";
     return String(v).trim();
+  }
+
+  // Stock is numeric (or the literal "if needed"); a formula gone wrong
+  // shouldn't leave a negative, fractional, or absurdly large stock count.
+  function stockText(row, col) {
+    const text = cellText(row, col);
+    const n = Number(text);
+    if (text === "" || !Number.isFinite(n)) return text;
+    return String(Math.min(99, Math.max(0, Math.ceil(n))));
   }
 
   const baselineKey = (it) =>
@@ -2306,7 +2318,7 @@ export default function SupplyMatch() {
           code,
           desc,
           unit: cellText(row, 5),
-          stock: cellText(row, 6),
+          stock: stockText(row, 6),
         });
       }
       if (!rows.length) {
