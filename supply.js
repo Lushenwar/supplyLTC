@@ -2038,6 +2038,16 @@ function sanitizeFilePart(s) {
   return (s || "").replace(/[\\/:*?"<>|]/g, "-").trim();
 }
 
+// The template has no dedicated date cell for the submission deadline — it's
+// embedded in a reminder sentence (row 3: 'Order Form Submitted NO LATER
+// THAN Jun.3rd, 2026 (Wed)'). Pull the month/day/year out of it.
+function parseOrderByDate(text) {
+  const m = /([A-Za-z]{3,9})\.?\s*(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})/.exec(text || "");
+  if (!m) return null;
+  const d = new Date(m[1] + " " + m[2] + ", " + m[3]);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 export default function SupplyMatch() {
   const [query, setQuery] = useState("");
   const [storageF, setStorageF] = useState("All");
@@ -2087,12 +2097,12 @@ export default function SupplyMatch() {
   // keyed by INVENTORY array index (so item order/template-row mapping never
   // shifts), a list of hidden indices (soft "remove"), and admin-added items
   // (appended after INVENTORY, same as the existing app-only extra items).
-  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null });
+  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null });
   const [overridesLoaded, setOverridesLoaded] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
   const refreshOverrides = () =>
     fetch("/api/inventory", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null }))
+      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null }))
       .then((data) => {
         setOverrides({
           stock: data.stock || {},
@@ -2102,6 +2112,7 @@ export default function SupplyMatch() {
           baseline: Array.isArray(data.baseline) ? data.baseline : null,
           baselineDate: data.baselineDate || null,
           baselineLabel: data.baselineLabel || null,
+          orderByDate: data.orderByDate || null,
         });
         setOverridesLoaded(true);
       })
@@ -2223,6 +2234,7 @@ export default function SupplyMatch() {
           baseline: overrides.baseline,
           baselineDate: overrides.baselineDate,
           baselineLabel: overrides.baselineLabel,
+          orderByDate: overrides.orderByDate,
         }),
       });
       if (!res.ok) {
@@ -2287,6 +2299,8 @@ export default function SupplyMatch() {
       await wb.xlsx.load(await file.arrayBuffer());
       const ws = wb.worksheets[0];
       if (!ws) throw new Error("No worksheet found in the file.");
+
+      const orderByDate = parseOrderByDate(cellText(ws.getRow(3), 4));
 
       const rows = [];
       for (let r = TEMPLATE_FIRST_ROW; r <= ws.rowCount; r++) {
@@ -2359,12 +2373,13 @@ export default function SupplyMatch() {
         .filter(({ existing, m }) => existing && String(existing.stock ?? "").trim() !== String(m.stock ?? "").trim())
         .map(({ m, existing }) => ({ code: m.code, desc: m.desc, from: existing.stock, to: m.stock }));
 
-      setBaselinePreview({ merged, added, removed, changed, autoCoded, fileName: file.name });
+      setBaselinePreview({ merged, added, removed, changed, autoCoded, fileName: file.name, orderByDate });
       setBaselineStatus("ready");
       setBaselineMsg(
         rows.length + " items parsed — " + added.length + " new, " + removed.length + " removed, " +
         changed.length + " stock change" + (changed.length === 1 ? "" : "s") +
-        (autoCoded ? " · " + autoCoded + " item" + (autoCoded === 1 ? "" : "s") + " had no code (auto-assigned NOCODE-XXXX)" : "") + "."
+        (autoCoded ? " · " + autoCoded + " item" + (autoCoded === 1 ? "" : "s") + " had no code (auto-assigned NOCODE-XXXX)" : "") +
+        (orderByDate ? " · order by " + new Date(orderByDate).toLocaleDateString() : " · no order-by date found in the file") + "."
       );
     } catch (err) {
       setBaselineStatus("error");
@@ -2388,6 +2403,7 @@ export default function SupplyMatch() {
           baseline: baselinePreview.merged,
           baselineDate: new Date().toISOString(),
           baselineLabel: baselinePreview.fileName,
+          orderByDate: baselinePreview.orderByDate,
         }),
       });
       if (!res.ok) {
@@ -2427,6 +2443,7 @@ export default function SupplyMatch() {
           baseline: null,
           baselineDate: null,
           baselineLabel: null,
+          orderByDate: null,
         }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Server error");
@@ -3191,6 +3208,9 @@ export default function SupplyMatch() {
           <div className="cart-head">
             <div className="ch-t"><ShoppingCart size={17} /> This unit's order</div>
             <div className="ch-s">Items are saved on this computer as you go — close and come back, they'll still be here.</div>
+            {overrides.orderByDate && (
+              <div className="ch-s"><b>Order by {new Date(overrides.orderByDate).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</b></div>
+            )}
             {cartResetNotice && (
               <div className="savemsg info" style={{ marginTop: 10 }}>
                 <AlertTriangle size={13} style={{ verticalAlign: "-2px" }} />{" "}
