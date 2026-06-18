@@ -2,7 +2,7 @@
 import {
   Search, Check, AlertTriangle, ExternalLink, Download,
   ChevronLeft, ImageOff, PackageSearch, Eraser,
-  ShoppingCart, Plus, Minus, Trash2, Printer, Save, FolderOpen, ClipboardCheck, Mail, Lock, Unlock,
+  ShoppingCart, Plus, Minus, Trash2, Printer, Save, ClipboardCheck, Mail, Lock, Unlock,
   Upload, FileSpreadsheet, PackagePlus, PackageMinus, RefreshCw
 } from "lucide-react";
 
@@ -2038,24 +2038,6 @@ function sanitizeFilePart(s) {
   return (s || "").replace(/[\\/:*?"<>|]/g, "-").trim();
 }
 
-// Persist the picked OneDrive folder handle across sessions via IndexedDB
-// (FileSystemDirectoryHandle can't be JSON-serialized into localStorage).
-function idbHandle(action, value) {
-  return new Promise((resolve, reject) => {
-    const open = indexedDB.open("supply-order-fs", 1);
-    open.onupgradeneeded = () => open.result.createObjectStore("handles");
-    open.onerror = () => reject(open.error);
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction("handles", action === "get" ? "readonly" : "readwrite");
-      const store = tx.objectStore("handles");
-      const req = action === "get" ? store.get("orderDir") : store.put(value, "orderDir");
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    };
-  });
-}
-
 export default function SupplyMatch() {
   const [query, setQuery] = useState("");
   const [storageF, setStorageF] = useState("All");
@@ -2729,59 +2711,6 @@ export default function SupplyMatch() {
     try { localStorage.setItem(submittedKey(unit), JSON.stringify(snap)); } catch {}
   }
 
-  // Generate + try to auto-save into the picked OneDrive folder; fall back to a
-  // normal download if the File System Access API is unavailable or denied.
-  async function generateAndSave() {
-    if (!cartLines.length) {
-      setSaveStatus("error");
-      setSaveMsg("Add at least one item before saving.");
-      return;
-    }
-    if (!ensureOrderFieldsFilled()) return;
-    setSaveStatus("working");
-    setSaveMsg("Building the order sheet…");
-    try {
-      const { blob, filename } = await buildOrderFile();
-
-      if (window.showDirectoryPicker) {
-        try {
-          let dir = await idbHandle("get");
-          const opts = { mode: "readwrite" };
-          if (dir && (await dir.queryPermission(opts)) !== "granted") {
-            if ((await dir.requestPermission(opts)) !== "granted") dir = null;
-          }
-          if (!dir) {
-            dir = await window.showDirectoryPicker({ id: "supply-order-dir", mode: "readwrite" });
-            await idbHandle("put", dir);
-          }
-          const fh = await dir.getFileHandle(filename, { create: true });
-          const w = await fh.createWritable();
-          await w.write(blob);
-          await w.close();
-          recordSubmitted();
-          setSaveStatus("saved");
-          setSaveMsg('Saved "' + filename + '" to the shared folder "' + dir.name + '".');
-          return;
-        } catch (err) {
-          if (err && err.name === "AbortError") {
-            setSaveStatus("");
-            setSaveMsg("Folder selection cancelled — nothing saved yet.");
-            return;
-          }
-          // fall through to download
-        }
-      }
-
-      downloadBlob(blob, filename);
-      recordSubmitted();
-      setSaveStatus("downloaded");
-      setSaveMsg('Downloaded "' + filename + '". Save it into the shared OneDrive order folder.');
-    } catch (err) {
-      setSaveStatus("error");
-      setSaveMsg("Couldn't build the order sheet: " + (err && err.message ? err.message : err));
-    }
-  }
-
   async function downloadOnly() {
     if (!cartLines.length) {
       setSaveStatus("error");
@@ -3319,10 +3248,7 @@ export default function SupplyMatch() {
 
           <div className="cart-foot">
             <div className="cart-actions">
-              <button className="btn primary" disabled={!cartLines.length || saveStatus === "working"} onClick={generateAndSave}>
-                <Save size={15} /> Generate &amp; save to folder
-              </button>
-              <button className="btn" disabled={!cartLines.length || saveStatus === "working"} onClick={sendToAdmin}>
+              <button className="btn primary" disabled={!cartLines.length || saveStatus === "working"} onClick={sendToAdmin}>
                 <Mail size={15} /> Send to admin
               </button>
               <div className="row2">
@@ -3350,9 +3276,6 @@ export default function SupplyMatch() {
                 {lastSubmitted.by ? " by " + lastSubmitted.by : ""} ({lastSubmitted.lines.length} item{lastSubmitted.lines.length === 1 ? "" : "s"}).
               </div>
             )}
-            <div className="subnote">
-              <FolderOpen size={12} style={{ verticalAlign: "-2px" }} /> First save asks you to pick the shared OneDrive order folder once; after that it saves there automatically. The file matches your printed form exactly.
-            </div>
           </div>
         </aside>
       </div>
