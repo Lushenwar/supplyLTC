@@ -7,9 +7,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { wing, nurseName, date, itemCount, items, filename, fileBase64 } = req.body || {};
+  const { unit, nurseName, date, itemCount, items, filename, fileBase64 } = req.body || {};
 
-  if (!wing || !nurseName || !items) {
+  if (!unit || !nurseName || !items) {
     return res.status(400).json({ error: "Missing required order details" });
   }
 
@@ -19,10 +19,10 @@ export default async function handler(req, res) {
     await resend.emails.send({
       from: "Supply LTC <onboarding@resend.dev>",
       to: process.env.ADMIN_EMAIL,
-      subject: `Supply Order – ${wing} – ${date}`,
+      subject: `Supply Order – ${unit} – ${date}`,
       text:
         `New order submitted.\n\n` +
-        `Wing: ${wing}\n` +
+        `Unit: ${unit}\n` +
         `Ordered by: ${nurseName}\n` +
         `Date: ${date}\n` +
         `Items: ${itemCount}\n\n` +

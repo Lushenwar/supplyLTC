@@ -1995,12 +1995,12 @@ function itemImgKey(item) {
 const MANIFEST_URL = "/images/MANIFEST.json";
 
 // ---- Order / cart system ----
-// Wings that can place an order (each has its own shared computer + Excel tab).
+// Units that can place an order (each has its own shared computer + Excel tab).
 // "All Items-RPN" is the master reference tab and is intentionally not orderable.
-const WINGS = ["7W", "7E", "6W", "6E", "5W", "5E", "3W", "3E", "2W", "2E"];
+const UNITS = ["7W", "7E", "6W", "6E", "5W", "5E", "3W", "3E", "2W", "2E"];
 
 // INVENTORY[0..139] line up 1:1 with the template's data rows 6..145 on every
-// wing tab (verified). Admin-added items (index >= INVENTORY.length) have no
+// unit tab (verified). Admin-added items (index >= INVENTORY.length) have no
 // template row and are appended after the last row.
 const TEMPLATE_FIRST_ROW = 6;
 // The static template only has pre-built rows for this many items. If a
@@ -2010,13 +2010,13 @@ const TEMPLATE_FIRST_ROW = 6;
 const TEMPLATE_ROW_CAPACITY = INVENTORY.length;
 const TEMPLATE_PATH = "/order-template.xlsx";
 
-const ORDER_WING_KEY = "supply-order-wing";
+const ORDER_UNIT_KEY = "supply-order-unit";
 const ORDER_NAME_KEY = "supply-order-nurse";
-const cartKey = (wing) => "supply-order-cart-" + wing;
-const submittedKey = (wing) => "supply-order-submitted-" + wing;
+const cartKey = (unit) => "supply-order-cart-" + unit;
+const submittedKey = (unit) => "supply-order-submitted-" + unit;
 
 // Tracks which baseline upload this device's carts were last synced against,
-// so a brand-new monthly inventory can wipe every wing's cart (old line-item
+// so a brand-new monthly inventory can wipe every unit's cart (old line-item
 // indices may point at completely different items afterwards).
 const BASELINE_STAMP_KEY = "supply-baseline-stamp";
 
@@ -2091,15 +2091,15 @@ export default function SupplyMatch() {
 
   // ---- Order mode state ----
   const [mode, setMode] = useState("order"); // "order" | "admin"
-  const [wing, setWing] = useState(() => loadJSON(ORDER_WING_KEY, ""));
+  const [unit, setUnit] = useState(() => loadJSON(ORDER_UNIT_KEY, ""));
   const [nurseName, setNurseName] = useState(() => loadJSON(ORDER_NAME_KEY, ""));
-  const [cart, setCart] = useState(() => loadJSON(cartKey(loadJSON(ORDER_WING_KEY, "")), {})); // { invIdx: qty }
-  const [lastSubmitted, setLastSubmitted] = useState(() => loadJSON(submittedKey(loadJSON(ORDER_WING_KEY, "")), null));
+  const [cart, setCart] = useState(() => loadJSON(cartKey(loadJSON(ORDER_UNIT_KEY, "")), {})); // { invIdx: qty }
+  const [lastSubmitted, setLastSubmitted] = useState(() => loadJSON(submittedKey(loadJSON(ORDER_UNIT_KEY, "")), null));
 
   const [saveStatus, setSaveStatus] = useState(""); // "", "working", "saved", "downloaded", "error"
   const [saveMsg, setSaveMsg] = useState("");
   const [showFieldErrors, setShowFieldErrors] = useState(false); // true once the nurse tries to save/print with missing fields
-  const [cartResetNotice, setCartResetNotice] = useState(false); // true right after a new monthly baseline wiped this wing's cart
+  const [cartResetNotice, setCartResetNotice] = useState(false); // true right after a new monthly baseline wiped this unit's cart
 
   // Inventory overrides synced from the admin (via /api/inventory): stock counts
   // keyed by INVENTORY array index (so item order/template-row mapping never
@@ -2533,30 +2533,30 @@ export default function SupplyMatch() {
     return () => clearTimeout(handle);
   }, [draftUrl, selIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist wing + nurse name; reload that wing's cart when the wing changes.
+  // Persist unit + nurse name; reload that unit's cart when the unit changes.
   useEffect(() => {
-    try { localStorage.setItem(ORDER_WING_KEY, JSON.stringify(wing)); } catch {}
-    setCart(loadJSON(cartKey(wing), {}));
-    setLastSubmitted(loadJSON(submittedKey(wing), null));
+    try { localStorage.setItem(ORDER_UNIT_KEY, JSON.stringify(unit)); } catch {}
+    setCart(loadJSON(cartKey(unit), {}));
+    setLastSubmitted(loadJSON(submittedKey(unit), null));
     setSaveStatus("");
     setSaveMsg("");
     setCartResetNotice(false);
-  }, [wing]);
+  }, [unit]);
 
   useEffect(() => {
     try { localStorage.setItem(ORDER_NAME_KEY, JSON.stringify(nurseName)); } catch {}
   }, [nurseName]);
 
-  // Persist the active wing's cart on every change.
+  // Persist the active unit's cart on every change.
   useEffect(() => {
-    try { localStorage.setItem(cartKey(wing), JSON.stringify(cart)); } catch {}
-  }, [cart, wing]);
+    try { localStorage.setItem(cartKey(unit), JSON.stringify(cart)); } catch {}
+  }, [cart, unit]);
 
   // Keep local carts in sync with the shared inventory whenever overrides
   // (re)load:
   // - A brand-new monthly baseline upload changes overrides.baselineDate —
   //   old cart line-item indices may now point at completely different
-  //   items, so every wing's cart on this device is wiped.
+  //   items, so every unit's cart on this device is wiped.
   // - Otherwise (e.g. the admin just hid or deleted one item), only drop
   //   cart lines that point at items that are now hidden or no longer exist
   //   — everything else in the cart is left untouched.
@@ -2565,7 +2565,7 @@ export default function SupplyMatch() {
     const stamp = overrides.baselineDate || "";
     const prevStamp = localStorage.getItem(BASELINE_STAMP_KEY);
     if (prevStamp !== null && prevStamp !== stamp) {
-      WINGS.forEach((w) => {
+      UNITS.forEach((w) => {
         try { localStorage.removeItem(cartKey(w)); } catch {}
       });
       setCart((c) => {
@@ -2587,8 +2587,8 @@ export default function SupplyMatch() {
         return changed ? next : c;
       };
       setCart(pruneCart);
-      WINGS.forEach((w) => {
-        if (w === wing) return; // current wing handled via setCart above
+      UNITS.forEach((w) => {
+        if (w === unit) return; // current unit handled via setCart above
         const stored = loadJSON(cartKey(w), {});
         const pruned = pruneCart(stored);
         if (pruned !== stored) {
@@ -2619,24 +2619,24 @@ export default function SupplyMatch() {
     });
   }
   function clearCart() {
-    if (cartLines.length && !window.confirm("Remove all items from this wing's order?")) return;
+    if (cartLines.length && !window.confirm("Remove all items from this unit's order?")) return;
     setCart({});
     setSaveStatus("");
     setSaveMsg("");
   }
 
-  // Wing and nurse name are required before generating/saving/printing an order.
+  // Unit and nurse name are required before generating/saving/printing an order.
   // Returns true if both are filled; otherwise flags the fields and shows an error.
   function ensureOrderFieldsFilled() {
-    if (wing && nurseName.trim()) return true;
+    if (unit && nurseName.trim()) return true;
     setShowFieldErrors(true);
     setSaveStatus("error");
-    setSaveMsg("Please select a wing and enter your name before continuing.");
+    setSaveMsg("Please select a unit and enter your name before continuing.");
     return false;
   }
 
   // Build the filled .xlsx from the template, writing quantities into the chosen
-  // wing's "To order" (column H). Returns { blob, filename }.
+  // unit's "To order" (column H). Returns { blob, filename }.
   async function buildOrderFile() {
     let ExcelJS;
     try {
@@ -2650,8 +2650,8 @@ export default function SupplyMatch() {
     const wb = new ExcelJS.Workbook();
     const buf = await (await fetch(TEMPLATE_PATH)).arrayBuffer();
     await wb.xlsx.load(buf);
-    const ws = wb.getWorksheet(wing);
-    if (!ws) throw new Error("Wing tab '" + wing + "' not found in template.");
+    const ws = wb.getWorksheet(unit);
+    if (!ws) throw new Error("Unit tab '" + unit + "' not found in template.");
 
     // Capture row style from the first data row before we touch anything.
     const styleSourceRow = ws.getRow(TEMPLATE_FIRST_ROW);
@@ -2677,9 +2677,9 @@ export default function SupplyMatch() {
       ws.spliceRows(rowNum, lastRow - rowNum + 1);
     }
 
-    // Keep only this wing's tab so the file isn't the whole 11-sheet workbook.
+    // Keep only this unit's tab so the file isn't the whole 11-sheet workbook.
     wb.worksheets.slice().forEach((s) => {
-      if (s.name !== wing) wb.removeWorksheet(s.id);
+      if (s.name !== unit) wb.removeWorksheet(s.id);
     });
 
     // Stamp who ordered + when into the print footer (doesn't disturb any cells).
@@ -2692,7 +2692,7 @@ export default function SupplyMatch() {
     });
     const date = new Date().toISOString().slice(0, 10);
     const who = sanitizeFilePart(nurseName);
-    const filename = sanitizeFilePart(wing) + " order " + date + (who ? " - " + who : "") + ".xlsx";
+    const filename = sanitizeFilePart(unit) + " order " + date + (who ? " - " + who : "") + ".xlsx";
     return { blob, filename };
   }
 
@@ -2714,7 +2714,7 @@ export default function SupplyMatch() {
       lines: cartLines.map((l) => ({ code: l.it.code, qty: l.qty })),
     };
     setLastSubmitted(snap);
-    try { localStorage.setItem(submittedKey(wing), JSON.stringify(snap)); } catch {}
+    try { localStorage.setItem(submittedKey(unit), JSON.stringify(snap)); } catch {}
   }
 
   // Generate + try to auto-save into the picked OneDrive folder; fall back to a
@@ -2818,7 +2818,7 @@ export default function SupplyMatch() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          wing,
+          unit,
           nurseName,
           date: new Date().toLocaleDateString(),
           itemCount: cartLines.length,
@@ -2857,12 +2857,12 @@ export default function SupplyMatch() {
       )
       .join("");
     const html =
-      "<!doctype html><html><head><meta charset='utf-8'><title>" + esc(wing) + " Order</title>" +
+      "<!doctype html><html><head><meta charset='utf-8'><title>" + esc(unit) + " Order</title>" +
       "<style>body{font-family:Arial,Helvetica,sans-serif;color:#14242b;padding:24px}" +
       "h1{font-size:18px;margin:0 0 2px}.meta{font-size:12px;color:#5c6e75;margin-bottom:14px}" +
       "table{border-collapse:collapse;width:100%}th,td{border:1px solid #c8d2d4;padding:6px 8px;font-size:12px;text-align:left}" +
       "th{background:#e1efef}.q{text-align:center;font-weight:700;width:64px}@media print{button{display:none}}</style></head><body>" +
-      "<h1>Unit " + esc(wing) + " — Supply Order</h1>" +
+      "<h1>Unit " + esc(unit) + " — Supply Order</h1>" +
       "<div class='meta'>Ordered by: " + esc(nurseName || "—") + " &nbsp;·&nbsp; " + esc(new Date().toLocaleString()) +
       " &nbsp;·&nbsp; " + cartLines.length + " item(s)</div>" +
       "<table><thead><tr><th>Code</th><th>Description</th><th>Unit</th><th>To order</th></tr></thead><tbody>" +
@@ -3002,7 +3002,7 @@ export default function SupplyMatch() {
             <div className="title">Supply Match</div>
             <div className="sub">
               {mode === "admin" ? "Admin — manage stock and inventory"
-                : "Browse and add items to this wing's order"}
+                : "Browse and add items to this unit's order"}
             </div>
           </div>
         </div>
@@ -3017,7 +3017,7 @@ export default function SupplyMatch() {
             <>
               <button className="btn" onClick={exportCsv}><Download size={15} /> Export</button>
               <div className="progress">
-                <div>Unit <b>{wing || "—"}</b> · <b>{cartLines.length}</b> item{cartLines.length === 1 ? "" : "s"}</div>
+                <div>Unit <b>{unit || "—"}</b> · <b>{cartLines.length}</b> item{cartLines.length === 1 ? "" : "s"}</div>
                 <div style={{ marginTop: 2 }}>{cartTotalUnits} unit{cartTotalUnits === 1 ? "" : "s"} to order</div>
               </div>
             </>
@@ -3248,24 +3248,24 @@ export default function SupplyMatch() {
         {/* CART */}
         <aside className="cartside">
           <div className="cart-head">
-            <div className="ch-t"><ShoppingCart size={17} /> This wing's order</div>
+            <div className="ch-t"><ShoppingCart size={17} /> This unit's order</div>
             <div className="ch-s">Items are saved on this computer as you go — close and come back, they'll still be here.</div>
             {cartResetNotice && (
               <div className="savemsg info" style={{ marginTop: 10 }}>
                 <AlertTriangle size={13} style={{ verticalAlign: "-2px" }} />{" "}
-                The inventory was updated this month, so this wing's order was cleared. Please re-add the items you need.
+                The inventory was updated this month, so this unit's order was cleared. Please re-add the items you need.
               </div>
             )}
           </div>
 
           <div className="orderfields">
-            <div className={showFieldErrors && !wing ? "field-err" : ""}>
-              <label>Wing / Unit *</label>
-              <select value={wing} onChange={(e) => { setWing(e.target.value); setShowFieldErrors(false); }}>
-                <option value="" disabled hidden>Select wing…</option>
-                {WINGS.map((w) => <option key={w} value={w}>{w}</option>)}
+            <div className={showFieldErrors && !unit ? "field-err" : ""}>
+              <label>Unit / Unit *</label>
+              <select value={unit} onChange={(e) => { setUnit(e.target.value); setShowFieldErrors(false); }}>
+                <option value="" disabled hidden>Select unit…</option>
+                {UNITS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
-              {showFieldErrors && !wing && <div className="field-msg">Please select a wing.</div>}
+              {showFieldErrors && !unit && <div className="field-msg">Please select a unit.</div>}
             </div>
             <div className={showFieldErrors && !nurseName.trim() ? "field-err" : ""}>
               <label>Ordered by *</label>
@@ -3280,7 +3280,7 @@ export default function SupplyMatch() {
 
           <div className="cartlist">
             {cartLines.length === 0 ? (
-              <div className="cart-empty">No items yet. Use <b>Add</b> on the left to build {wing || "this wing"}'s order.</div>
+              <div className="cart-empty">No items yet. Use <b>Add</b> on the left to build {unit || "this unit"}'s order.</div>
             ) : (
               cartLines.map((l) => (
                 <div key={l.idx} className="cartitem">
@@ -3334,7 +3334,7 @@ export default function SupplyMatch() {
             )}
             {lastSubmitted && (
               <div className="subnote">
-                <ClipboardCheck size={12} style={{ verticalAlign: "-2px" }} /> Last saved for {wing}: {new Date(lastSubmitted.at).toLocaleString()}
+                <ClipboardCheck size={12} style={{ verticalAlign: "-2px" }} /> Last saved for {unit}: {new Date(lastSubmitted.at).toLocaleString()}
                 {lastSubmitted.by ? " by " + lastSubmitted.by : ""} ({lastSubmitted.lines.length} item{lastSubmitted.lines.length === 1 ? "" : "s"}).
               </div>
             )}
@@ -3353,7 +3353,7 @@ export default function SupplyMatch() {
             <div>
               <h2><FileSpreadsheet size={18} /> Monthly inventory upload</h2>
               <p className="sub">
-                At the start of each month, upload the updated inventory spreadsheet (same layout as the order forms — Storage, Category, Code, Descriptions, Unit, Stock level starting at row {TEMPLATE_FIRST_ROW}). It becomes the new baseline for every wing: new items, removed items, and stock-count changes are detected automatically. Existing product photos and details are kept for items that still match by code.
+                At the start of each month, upload the updated inventory spreadsheet (same layout as the order forms — Storage, Category, Code, Descriptions, Unit, Stock level starting at row {TEMPLATE_FIRST_ROW}). It becomes the new baseline for every unit: new items, removed items, and stock-count changes are detected automatically. Existing product photos and details are kept for items that still match by code.
               </p>
             </div>
             {overrides.baselineLabel ? (
