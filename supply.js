@@ -1900,7 +1900,11 @@ input,select,textarea{font-family:inherit}
 .admin-side-col{width:300px;flex-shrink:0}
 .admin-search{margin-bottom:10px}
 .admintable{border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.admintable-head,.admintable-row{display:grid;grid-template-columns:1.2fr 3fr 0.8fr 0.8fr 0.9fr;gap:10px;align-items:center;padding:8px 12px}
+.admintable-head,.admintable-row{display:grid;grid-template-columns:1.2fr 2fr 0.8fr 0.8fr 2fr 0.9fr;gap:10px;align-items:center;padding:8px 12px}
+.atc-note input{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--surface)}
+.note-flag{font-size:10.5px;font-weight:700;color:var(--amber);background:var(--amber-soft);border-radius:5px;padding:2px 7px;margin-left:6px;white-space:nowrap}
+.item-note-banner{background:var(--amber-soft);border:1px solid #EDD3AE;border-radius:10px;padding:11px 14px;margin-bottom:18px;display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#7A4A14;line-height:1.45}
+.item-note-banner svg{flex-shrink:0;margin-top:1px;color:var(--amber)}
 .admintable-head{background:var(--line2);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
 .admintable-body{max-height:calc(100vh - 380px);overflow:auto}
 .admintable-row{border-top:1px solid var(--line2);font-size:12.5px}
@@ -2097,12 +2101,12 @@ export default function SupplyMatch() {
   // keyed by INVENTORY array index (so item order/template-row mapping never
   // shifts), a list of hidden indices (soft "remove"), and admin-added items
   // (appended after INVENTORY, same as the existing app-only extra items).
-  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null });
+  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null, itemNotes: {} });
   const [overridesLoaded, setOverridesLoaded] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
   const refreshOverrides = () =>
     fetch("/api/inventory", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null }))
+      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null, itemNotes: {} }))
       .then((data) => {
         setOverrides({
           stock: data.stock || {},
@@ -2113,6 +2117,7 @@ export default function SupplyMatch() {
           baselineDate: data.baselineDate || null,
           baselineLabel: data.baselineLabel || null,
           orderByDate: data.orderByDate || null,
+          itemNotes: data.itemNotes || {},
         });
         setOverridesLoaded(true);
       })
@@ -2156,6 +2161,7 @@ export default function SupplyMatch() {
   const [adminStockEdits, setAdminStockEdits] = useState({});
   const [adminHidden, setAdminHidden] = useState(new Set());
   const [adminAdded, setAdminAdded] = useState([]);
+  const [adminItemNotes, setAdminItemNotes] = useState({});
   const [adminSaveStatus, setAdminSaveStatus] = useState("");
   const [adminSaveMsg, setAdminSaveMsg] = useState("");
   const emptyNewItem = { storage: "", category: "", code: "", desc: "", unit: "", stock: "", productName: "", manufacturer: "", imageUrl: "" };
@@ -2172,6 +2178,7 @@ export default function SupplyMatch() {
     setAdminStockEdits(overrides.stock);
     setAdminHidden(new Set(overrides.hidden));
     setAdminAdded(overrides.added);
+    setAdminItemNotes(overrides.itemNotes || {});
     if (selIdx !== null) {
       const fresh = (overrides.images || {})[itemImgKey(inv[selIdx])] || "";
       setAdminImgDraft(fresh);
@@ -2235,6 +2242,7 @@ export default function SupplyMatch() {
           baselineDate: overrides.baselineDate,
           baselineLabel: overrides.baselineLabel,
           orderByDate: overrides.orderByDate,
+          itemNotes: adminItemNotes,
         }),
       });
       if (!res.ok) {
@@ -3022,7 +3030,7 @@ export default function SupplyMatch() {
                   onKeyDown={(e) => e.key === "Enter" && selectItem(idx)}
                 >
                   <span className="rowmain">
-                    <span className="code">{it.code || "— no code —"}{qty > 0 && <span className="miniflag">In order ×{qty}</span>}</span>
+                    <span className="code">{it.code || "— no code —"}{qty > 0 && <span className="miniflag">In order ×{qty}</span>}{overrides.itemNotes && overrides.itemNotes[idx] && <span className="note-flag"><AlertTriangle size={10} style={{ verticalAlign: "-1px", marginRight: 3 }} />{overrides.itemNotes[idx]}</span>}</span>
                     <span className="desc">{it.desc}</span>
                     <span className="chip">{it.category || "Uncategorized"}</span>
                   </span>
@@ -3084,6 +3092,13 @@ export default function SupplyMatch() {
                     )}
                   </div>
                 </div>
+
+                {overrides.itemNotes && overrides.itemNotes[selIdx] && (
+                  <div className="item-note-banner">
+                    <AlertTriangle size={16} />
+                    <span>{overrides.itemNotes[selIdx]}</span>
+                  </div>
+                )}
 
                 <div className="field">
                   <div className="flabel">Description on file</div>
@@ -3502,6 +3517,7 @@ export default function SupplyMatch() {
                   <div>Description</div>
                   <div>Storage</div>
                   <div>Stock</div>
+                  <div>Note / Warning</div>
                   <div></div>
                 </div>
                 <div className="admintable-body">
@@ -3515,6 +3531,17 @@ export default function SupplyMatch() {
                           className="atc-stock"
                           value={adminStockEdits[idx] != null ? adminStockEdits[idx] : (it.stock || "")}
                           onChange={(e) => setAdminStock(idx, e.target.value)}
+                        />
+                      </div>
+                      <div className="atc-note">
+                        <input
+                          placeholder="e.g. Limited to 2 per order"
+                          value={adminItemNotes[idx] || ""}
+                          onChange={(e) => setAdminItemNotes((p) => {
+                            const next = { ...p };
+                            if (e.target.value) next[idx] = e.target.value; else delete next[idx];
+                            return next;
+                          })}
                         />
                       </div>
                       <div>
