@@ -2164,7 +2164,7 @@ export default function SupplyMatch() {
   const [adminItemNotes, setAdminItemNotes] = useState({});
   const [adminSaveStatus, setAdminSaveStatus] = useState("");
   const [adminSaveMsg, setAdminSaveMsg] = useState("");
-  const emptyNewItem = { storage: "", category: "", code: "", desc: "", unit: "", stock: "", productName: "", manufacturer: "", imageUrl: "" };
+  const emptyNewItem = { storage: "", category: "", code: "", desc: "", unit: "", stock: "", productName: "", manufacturer: "", imageUrl: "", note: "" };
   const [adminNewItem, setAdminNewItem] = useState(emptyNewItem);
 
   // ---- Monthly inventory baseline upload (admin) ----
@@ -2217,7 +2217,11 @@ export default function SupplyMatch() {
       window.alert("Code and description are required.");
       return;
     }
+    const newIdx = baseLen + adminAdded.length;
     setAdminAdded((p) => [...p, { ...adminNewItem }]);
+    if (adminNewItem.note.trim()) {
+      setAdminItemNotes((p) => ({ ...p, [newIdx]: adminNewItem.note.trim() }));
+    }
     setAdminNewItem(emptyNewItem);
   }
 
@@ -3077,7 +3081,7 @@ export default function SupplyMatch() {
                       <span className="tag">{item.storage}</span>
                       <span className="tag">{item.category || "Uncategorized"}</span>
                       <span className="tag">Unit {item.unit || "—"}</span>
-                      <span className="tag">Stock {item.stock || "—"}</span>
+                      <span className="tag">Stock level {item.stock || "—"}</span>
                     </div>
                   </div>
                   <div className="dethead-cart">
@@ -3516,7 +3520,7 @@ export default function SupplyMatch() {
                   <div>Code</div>
                   <div>Description</div>
                   <div>Storage</div>
-                  <div>Stock</div>
+                  <div>Stock level</div>
                   <div>Note / Warning</div>
                   <div></div>
                 </div>
@@ -3569,10 +3573,11 @@ export default function SupplyMatch() {
                 <input placeholder="Storage (e.g. 7W)" value={adminNewItem.storage} onChange={(e) => setAdminNewItem((p) => ({ ...p, storage: e.target.value }))} />
                 <input placeholder="Category" value={adminNewItem.category} onChange={(e) => setAdminNewItem((p) => ({ ...p, category: e.target.value }))} />
                 <input placeholder="Unit (e.g. EA)" value={adminNewItem.unit} onChange={(e) => setAdminNewItem((p) => ({ ...p, unit: e.target.value }))} />
-                <input placeholder="Stock" value={adminNewItem.stock} onChange={(e) => setAdminNewItem((p) => ({ ...p, stock: e.target.value }))} />
+                <input placeholder="Stock level" value={adminNewItem.stock} onChange={(e) => setAdminNewItem((p) => ({ ...p, stock: e.target.value }))} />
                 <input placeholder="Product name" value={adminNewItem.productName} onChange={(e) => setAdminNewItem((p) => ({ ...p, productName: e.target.value }))} />
                 <input placeholder="Manufacturer" value={adminNewItem.manufacturer} onChange={(e) => setAdminNewItem((p) => ({ ...p, manufacturer: e.target.value }))} />
                 <input placeholder="Image URL (optional)" value={adminNewItem.imageUrl} onChange={(e) => setAdminNewItem((p) => ({ ...p, imageUrl: e.target.value }))} />
+                <input placeholder="Note / Warning (optional)" value={adminNewItem.note} onChange={(e) => setAdminNewItem((p) => ({ ...p, note: e.target.value }))} />
                 <button className="btn" onClick={addNewItem}><Plus size={15} /> Add item</button>
               </div>
             </div>
