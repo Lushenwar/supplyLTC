@@ -1909,6 +1909,8 @@ input,select,textarea{font-family:inherit}
 .admintable-body{max-height:calc(100vh - 380px);overflow:auto}
 .admintable-row{border-top:1px solid var(--line2);font-size:12.5px}
 .admintable-row.hidden-row{opacity:.45}
+.orders-head,.orders-row{grid-template-columns:0.7fr 0.6fr 1.6fr 1.6fr 1fr}
+.orders-row.hidden-row{opacity:.5}
 .atc-code{font-family:var(--mono);font-weight:600}
 .atc-desc{color:var(--soft)}
 .atc-stock{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:12.5px}
@@ -2015,14 +2017,13 @@ const TEMPLATE_ROW_CAPACITY = INVENTORY.length;
 const TEMPLATE_PATH = "/order-template.xlsx";
 
 const ORDER_UNIT_KEY = "supply-order-unit";
-const ORDER_NAME_KEY = "supply-order-nurse";
-const cartKey = (unit) => "supply-order-cart-" + unit;
-const submittedKey = (unit) => "supply-order-submitted-" + unit;
 
-// Tracks which baseline upload this device's carts were last synced against,
-// so a brand-new monthly inventory can wipe every unit's cart (old line-item
-// indices may point at completely different items afterwards).
-const BASELINE_STAMP_KEY = "supply-baseline-stamp";
+// Offline cache only — /api/orders holds the real order for a unit, so any
+// shift on any machine sees what the previous shift already ordered. Keyed by
+// cycle as well as unit so a new monthly baseline (whose item indices may point
+// at completely different items) can never resurface last month's cart.
+// ponytail: old cycles' keys are left behind; ~1KB each, harmless for years.
+const cartKey = (cycle, unit) => "supply-order-cart-" + cycle + "-" + unit;
 
 // Admin mode is a soft gate on the UI only — the real protection is that
 // /api/inventory's POST endpoint checks this same passcode server-side.
@@ -2088,14 +2089,17 @@ export default function SupplyMatch() {
   // ---- Order mode state ----
   const [mode, setMode] = useState("order"); // "order" | "admin"
   const [unit, setUnit] = useState(() => loadJSON(ORDER_UNIT_KEY, ""));
-  const [nurseName, setNurseName] = useState(() => loadJSON(ORDER_NAME_KEY, ""));
-  const [cart, setCart] = useState(() => loadJSON(cartKey(loadJSON(ORDER_UNIT_KEY, "")), {})); // { invIdx: qty }
-  const [lastSubmitted, setLastSubmitted] = useState(() => loadJSON(submittedKey(loadJSON(ORDER_UNIT_KEY, "")), null));
+  // Deliberately not persisted: on a shared kiosk the next person to type here
+  // is usually a different nurse, and a pre-filled name gets left uncorrected.
+  const [nurseName, setNurseName] = useState("");
+  const [cart, setCart] = useState({}); // { invIdx: qty } — loaded from /api/orders
+  const [orderDoc, setOrderDoc] = useState(null); // server record: { updatedAt, contributors, ... }
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderSync, setOrderSync] = useState(""); // "" | "saving" | "saved" | "offline"
 
   const [saveStatus, setSaveStatus] = useState(""); // "", "working", "saved", "downloaded", "error"
   const [saveMsg, setSaveMsg] = useState("");
   const [showFieldErrors, setShowFieldErrors] = useState(false); // true once the nurse tries to save/print with missing fields
-  const [cartResetNotice, setCartResetNotice] = useState(false); // true right after a new monthly baseline wiped this unit's cart
 
   // Inventory overrides synced from the admin (via /api/inventory): stock counts
   // keyed by INVENTORY array index (so item order/template-row mapping never
@@ -2148,6 +2152,11 @@ export default function SupplyMatch() {
   // against whichever of these is currently in effect.
   const baseInventory = (overrides.baseline && overrides.baseline.length) ? overrides.baseline : INVENTORY;
   const baseLen = baseInventory.length;
+
+  // The ordering cycle: every order document is scoped to the baseline upload it
+  // was built against. A new monthly upload therefore starts every unit at an
+  // empty order automatically, with no wipe step to get wrong.
+  const cycle = overrides.baselineDate || "none";
   const templateLastIndex = Math.min(baseLen, TEMPLATE_ROW_CAPACITY) - 1;
 
   const hiddenSet = useMemo(() => new Set(overrides.hidden || []), [overrides.hidden]);
@@ -2171,6 +2180,11 @@ export default function SupplyMatch() {
   const [baselinePreview, setBaselinePreview] = useState(null); // { merged, added, removed, changed, fileName }
   const [baselineStatus, setBaselineStatus] = useState(""); // "" | "parsing" | "ready" | "saving" | "saved" | "error"
   const [baselineMsg, setBaselineMsg] = useState("");
+
+  // ---- Orders panel (admin): every unit's live order for the current cycle ----
+  const [orders, setOrders] = useState({}); // unit -> order doc
+  const [ordersStatus, setOrdersStatus] = useState(""); // "" | "loading" | "ready" | "error"
+  const [ordersMsg, setOrdersMsg] = useState("");
 
   // Sync drafts from the server whenever overrides (re)load — also runs right
   // after a successful save, which is a no-op since drafts already match.
@@ -2259,6 +2273,107 @@ export default function SupplyMatch() {
     } catch (err) {
       setAdminSaveStatus("error");
       setAdminSaveMsg("Couldn't save: " + (err && err.message ? err.message : err));
+    }
+  }
+
+  // ---- Orders panel actions ----
+
+  function refreshOrders() {
+    setOrdersStatus("loading");
+    setOrdersMsg("");
+    return fetch("/api/orders?cycle=" + encodeURIComponent(cycle), { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load failed"))))
+      .then(({ orders: got }) => {
+        setOrders(got || {});
+        setOrdersStatus("ready");
+      })
+      .catch(() => {
+        setOrdersStatus("error");
+        setOrdersMsg("Couldn't load orders. Check the connection and try again.");
+      });
+  }
+
+  // Pull the current orders whenever the admin opens the panel, so what they see
+  // is what the units have in there right now.
+  useEffect(() => {
+    if (mode === "admin" && overridesLoaded) refreshOrders();
+  }, [mode, cycle, overridesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const orderRows = useMemo(
+    () =>
+      UNITS.map((u) => {
+        const doc = orders[u];
+        const lines = (doc && doc.lines) || {};
+        const entries = Object.entries(lines)
+          .map(([idx, qty]) => ({ it: inv[Number(idx)], qty: Number(qty) }))
+          .filter((l) => l.it && l.qty > 0);
+        return { unit: u, doc, lines, entries };
+      }),
+    [orders, inv]
+  );
+
+  async function blobToBase64(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  const orderAuthor = (doc) =>
+    (doc && Array.isArray(doc.contributors) && doc.contributors.length)
+      ? doc.contributors.join(", ")
+      : "";
+
+  async function downloadUnitOrder(row) {
+    setOrdersMsg("Building " + row.unit + "'s order sheet…");
+    try {
+      const { blob, filename } = await buildOrderFile(row.unit, row.lines, orderAuthor(row.doc));
+      downloadBlob(blob, filename);
+      setOrdersMsg('Downloaded "' + filename + '".');
+    } catch (err) {
+      setOrdersMsg("Couldn't build " + row.unit + "'s sheet: " + (err && err.message ? err.message : err));
+    }
+  }
+
+  // One email, every unit attached — replaces the old per-click "Send to admin",
+  // which produced a message every time anyone added an item.
+  async function emailAllOrders() {
+    const filled = orderRows.filter((r) => r.entries.length);
+    if (!filled.length) {
+      setOrdersMsg("No unit has ordered anything yet.");
+      return;
+    }
+    setOrdersStatus("emailing");
+    setOrdersMsg("Building " + filled.length + " order sheet" + (filled.length === 1 ? "" : "s") + "…");
+    try {
+      const units = [];
+      for (const row of filled) {
+        const author = orderAuthor(row.doc);
+        const { blob, filename } = await buildOrderFile(row.unit, row.lines, author);
+        units.push({
+          unit: row.unit,
+          itemCount: row.entries.length,
+          contributors: author,
+          updatedAt: row.doc && row.doc.updatedAt ? new Date(row.doc.updatedAt).toLocaleString() : "",
+          items: row.entries.map((l) => (l.it.code || "—") + "  x" + l.qty + "  - " + l.it.desc).join("\n"),
+          filename,
+          fileBase64: await blobToBase64(blob),
+        });
+      }
+      const res = await fetch("/api/send-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cycleLabel: overrides.baselineLabel || "", units }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Server error");
+      }
+      setOrdersStatus("ready");
+      setOrdersMsg("Emailed " + units.length + " unit order" + (units.length === 1 ? "" : "s") + " in one message.");
+    } catch (err) {
+      setOrdersStatus("ready");
+      setOrdersMsg("Couldn't email the orders: " + (err && err.message ? err.message : err));
     }
   }
 
@@ -2556,71 +2671,99 @@ export default function SupplyMatch() {
     return () => clearTimeout(handle);
   }, [draftUrl, selIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist unit + nurse name; reload that unit's cart when the unit changes.
+  // Remember which unit this kiosk is on, and clear the typed name whenever the
+  // unit changes — on a shared machine a different unit usually means a
+  // different person, and a carried-over name mislabels the order.
   useEffect(() => {
     try { localStorage.setItem(ORDER_UNIT_KEY, JSON.stringify(unit)); } catch {}
-    setCart(loadJSON(cartKey(unit), {}));
-    setLastSubmitted(loadJSON(submittedKey(unit), null));
+    setNurseName("");
     setSaveStatus("");
     setSaveMsg("");
-    setCartResetNotice(false);
+    setOrderSync("");
   }, [unit]);
 
-  useEffect(() => {
-    try { localStorage.setItem(ORDER_NAME_KEY, JSON.stringify(nurseName)); } catch {}
-  }, [nurseName]);
+  // Drop cart lines pointing at items that were hidden or removed since the
+  // order was written. Returns the same object when nothing changed.
+  const pruneLines = (lines) => {
+    let changed = false;
+    const next = {};
+    Object.entries(lines).forEach(([k, v]) => {
+      const idx = Number(k);
+      if (idx >= inv.length || hiddenSet.has(idx)) { changed = true; return; }
+      next[k] = v;
+    });
+    return changed ? next : lines;
+  };
 
-  // Persist the active unit's cart on every change.
+  // Load this unit's order for the current cycle from the server. The server
+  // document is the truth — whatever an earlier shift ordered is what shows up
+  // in the cart, so nobody builds a second parallel order for the same unit.
+  // localStorage is only shown while the fetch is in flight.
+  const savedCartRef = useRef(null);  // last payload written to the server
+  const cartReadyRef = useRef(false); // false until the load settles; gates autosave
   useEffect(() => {
-    try { localStorage.setItem(cartKey(unit), JSON.stringify(cart)); } catch {}
-  }, [cart, unit]);
-
-  // Keep local carts in sync with the shared inventory whenever overrides
-  // (re)load:
-  // - A brand-new monthly baseline upload changes overrides.baselineDate —
-  //   old cart line-item indices may now point at completely different
-  //   items, so every unit's cart on this device is wiped.
-  // - Otherwise (e.g. the admin just hid or deleted one item), only drop
-  //   cart lines that point at items that are now hidden or no longer exist
-  //   — everything else in the cart is left untouched.
-  useEffect(() => {
-    if (!overridesLoaded) return;
-    const stamp = overrides.baselineDate || "";
-    const prevStamp = localStorage.getItem(BASELINE_STAMP_KEY);
-    if (prevStamp !== null && prevStamp !== stamp) {
-      UNITS.forEach((w) => {
-        try { localStorage.removeItem(cartKey(w)); } catch {}
-      });
-      setCart((c) => {
-        if (Object.keys(c).length) setCartResetNotice(true);
-        return {};
-      });
-    } else {
-      const pruneCart = (c) => {
-        let changed = false;
-        const next = {};
-        Object.entries(c).forEach(([k, v]) => {
-          const idx = Number(k);
-          if (idx >= inv.length || hiddenSet.has(idx)) {
-            changed = true;
-            return;
-          }
-          next[k] = v;
-        });
-        return changed ? next : c;
-      };
-      setCart(pruneCart);
-      UNITS.forEach((w) => {
-        if (w === unit) return; // current unit handled via setCart above
-        const stored = loadJSON(cartKey(w), {});
-        const pruned = pruneCart(stored);
-        if (pruned !== stored) {
-          try { localStorage.setItem(cartKey(w), JSON.stringify(pruned)); } catch {}
-        }
-      });
+    cartReadyRef.current = false;
+    savedCartRef.current = null;
+    setOrderSync("");
+    if (!unit || !overridesLoaded) {
+      setCart({});
+      setOrderDoc(null);
+      return;
     }
-    try { localStorage.setItem(BASELINE_STAMP_KEY, stamp); } catch {}
-  }, [overridesLoaded, overrides, inv.length, hiddenSet]); // eslint-disable-line react-hooks/exhaustive-deps
+    setCart(loadJSON(cartKey(cycle, unit), {}));
+    setOrderLoading(true);
+    let cancelled = false;
+    fetch("/api/orders?unit=" + encodeURIComponent(unit) + "&cycle=" + encodeURIComponent(cycle), { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load failed"))))
+      .then(({ order }) => {
+        if (cancelled) return;
+        const pruned = pruneLines((order && order.lines) || {});
+        setOrderDoc(order || null);
+        setCart(pruned);
+        // Match the autosave's payload shape (the name field was just cleared by
+        // the unit effect) so simply opening a unit doesn't write a new version.
+        savedCartRef.current = JSON.stringify({ lines: pruned, by: "" });
+        cartReadyRef.current = true;
+      })
+      .catch(() => {
+        // Never let autosave run after a failed load: the cached cart on screen
+        // could be older than the server's and would clobber it.
+        if (!cancelled) setOrderSync("offline");
+      })
+      .finally(() => { if (!cancelled) setOrderLoading(false); });
+    return () => { cancelled = true; };
+  }, [unit, cycle, overridesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cache the cart locally so a reload shows something instantly.
+  useEffect(() => {
+    if (!unit) return;
+    try { localStorage.setItem(cartKey(cycle, unit), JSON.stringify(cart)); } catch {}
+  }, [cart, unit, cycle]);
+
+  // Autosave back to the server, debounced. No email is sent here — the admin
+  // collects the final order from the Orders panel when they're ready, which is
+  // why they no longer get one message per click.
+  useEffect(() => {
+    if (!cartReadyRef.current || !unit) return;
+    const payload = JSON.stringify({ lines: cart, by: nurseName.trim() });
+    if (payload === savedCartRef.current) return;
+    setOrderSync("saving");
+    const handle = setTimeout(() => {
+      fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unit, cycle, lines: cart, by: nurseName.trim() }),
+      })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("save failed"))))
+        .then(({ order }) => {
+          savedCartRef.current = payload;
+          setOrderDoc(order || null);
+          setOrderSync("saved");
+        })
+        .catch(() => setOrderSync("offline"));
+    }, 1200);
+    return () => clearTimeout(handle);
+  }, [cart, nurseName, unit, cycle]);
 
   function addToCart(idx) {
     setCart((c) => ({ ...c, [idx]: (Number(c[idx]) || 0) + 1 }));
@@ -2660,7 +2803,11 @@ export default function SupplyMatch() {
 
   // Build the filled .xlsx from the template, writing quantities into the chosen
   // unit's "To order" (column H). Returns { blob, filename }.
-  async function buildOrderFile() {
+  //
+  // Takes the unit/lines/author explicitly rather than reading component state,
+  // so the admin Orders panel can export any unit's saved order, not just the
+  // one currently selected on this kiosk.
+  async function buildOrderFile(tUnit = unit, tLines = cart, tBy = nurseName) {
     let ExcelJS;
     try {
       ExcelJS = (await import("exceljs")).default;
@@ -2673,8 +2820,8 @@ export default function SupplyMatch() {
     const wb = new ExcelJS.Workbook();
     const buf = await (await fetch(TEMPLATE_PATH)).arrayBuffer();
     await wb.xlsx.load(buf);
-    const ws = wb.getWorksheet(unit);
-    if (!ws) throw new Error("Unit tab '" + unit + "' not found in template.");
+    const ws = wb.getWorksheet(tUnit);
+    if (!ws) throw new Error("Unit tab '" + tUnit + "' not found in template.");
 
     // Capture row style from the first data row before we touch anything.
     const styleSourceRow = ws.getRow(TEMPLATE_FIRST_ROW);
@@ -2686,7 +2833,7 @@ export default function SupplyMatch() {
     let rowNum = TEMPLATE_FIRST_ROW;
     inv.forEach((it, idx) => {
       if (hiddenSet.has(idx)) return;
-      const q = Number(cart[idx]) || "";
+      const q = Number(tLines[idx]) || "";
       const row = ws.getRow(rowNum);
       row.values = [it.storage, it.category || "", it.code || "", it.desc, it.unit || "", it.stock || "", "", q, ""];
       for (let c = 1; c <= 9; c++) row.getCell(c).style = colStyles[c - 1];
@@ -2702,20 +2849,19 @@ export default function SupplyMatch() {
 
     // Keep only this unit's tab so the file isn't the whole 11-sheet workbook.
     wb.worksheets.slice().forEach((s) => {
-      if (s.name !== unit) wb.removeWorksheet(s.id);
+      if (s.name !== tUnit) wb.removeWorksheet(s.id);
     });
 
     // Stamp who ordered + when into the print footer (doesn't disturb any cells).
     ws.headerFooter.oddFooter =
-      "&LOrdered by: " + (nurseName || "—") + "&RGenerated " + new Date().toLocaleString();
+      "&LOrdered by: " + (tBy || "—") + "&RGenerated " + new Date().toLocaleString();
 
     const out = await wb.xlsx.writeBuffer();
     const blob = new Blob([out], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
     const date = new Date().toISOString().slice(0, 10);
-    const who = sanitizeFilePart(nurseName);
-    const filename = sanitizeFilePart(unit) + " order " + date + (who ? " - " + who : "") + ".xlsx";
+    const filename = sanitizeFilePart(tUnit) + " order " + date + ".xlsx";
     return { blob, filename };
   }
 
@@ -2730,14 +2876,36 @@ export default function SupplyMatch() {
     URL.revokeObjectURL(url);
   }
 
-  function recordSubmitted() {
-    const snap = {
-      at: new Date().toISOString(),
-      by: nurseName || "",
-      lines: cartLines.map((l) => ({ code: l.it.code, qty: l.qty })),
-    };
-    setLastSubmitted(snap);
-    try { localStorage.setItem(submittedKey(unit), JSON.stringify(snap)); } catch {}
+  // Flush the debounced autosave immediately. Nothing is emailed — this just
+  // makes "I'm done" a thing the nurse can click and see confirmed, instead of
+  // trusting a background save.
+  async function saveOrderNow() {
+    if (!unit) {
+      setShowFieldErrors(true);
+      setSaveStatus("error");
+      setSaveMsg("Please select a unit first.");
+      return;
+    }
+    setOrderSync("saving");
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unit, cycle, lines: cart, by: nurseName.trim() }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      const { order } = await res.json();
+      savedCartRef.current = JSON.stringify({ lines: cart, by: nurseName.trim() });
+      cartReadyRef.current = true;
+      setOrderDoc(order || null);
+      setOrderSync("saved");
+      setSaveStatus("saved");
+      setSaveMsg("Saved. The admin will collect " + unit + "'s order — you don't need to send anything.");
+    } catch {
+      setOrderSync("offline");
+      setSaveStatus("error");
+      setSaveMsg("Couldn't reach the server. Check the connection and try again.");
+    }
   }
 
   async function downloadOnly() {
@@ -2752,61 +2920,11 @@ export default function SupplyMatch() {
     try {
       const { blob, filename } = await buildOrderFile();
       downloadBlob(blob, filename);
-      recordSubmitted();
       setSaveStatus("downloaded");
       setSaveMsg('Downloaded "' + filename + '".');
     } catch (err) {
       setSaveStatus("error");
       setSaveMsg("Couldn't build the order sheet: " + (err && err.message ? err.message : err));
-    }
-  }
-
-  // Email the order to the admin (with the .xlsx attached) via the /api/send-order
-  // serverless function, in case the nurse forgets to save it into the shared folder.
-  async function sendToAdmin() {
-    if (!cartLines.length) {
-      setSaveStatus("error");
-      setSaveMsg("Add at least one item before sending.");
-      return;
-    }
-    if (!ensureOrderFieldsFilled()) return;
-    setSaveStatus("working");
-    setSaveMsg("Sending order to admin…");
-    try {
-      const { blob, filename } = await buildOrderFile();
-      const buf = await blob.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const fileBase64 = btoa(binary);
-
-      const items = cartLines
-        .map((l) => (l.it.code || "—") + "  x" + l.qty + "  - " + l.it.desc)
-        .join("\n");
-
-      const res = await fetch("/api/send-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          unit,
-          nurseName,
-          date: new Date().toLocaleDateString(),
-          itemCount: cartLines.length,
-          items,
-          filename,
-          fileBase64,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Server error");
-      }
-      recordSubmitted();
-      setSaveStatus("saved");
-      setSaveMsg("Order emailed to admin.");
-    } catch (err) {
-      setSaveStatus("error");
-      setSaveMsg("Couldn't send the order: " + (err && err.message ? err.message : err));
     }
   }
 
@@ -3226,21 +3344,38 @@ export default function SupplyMatch() {
         <aside className="cartside">
           <div className="cart-head">
             <div className="ch-t"><ShoppingCart size={17} /> This unit's order</div>
-            <div className="ch-s">Items are saved on this computer as you go — close and come back, they'll still be here.</div>
+            <div className="ch-s">
+              This is {unit || "the unit"}'s one shared order for the month — every shift adds to the same list, and the admin collects it at the deadline.
+            </div>
             {overrides.orderByDate && (
               <div className="ch-s"><b>Order by {new Date(overrides.orderByDate).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</b></div>
             )}
-            {cartResetNotice && (
+            {/* Who touched this order already — so a later shift can see at a
+                glance that their unit has ordered, instead of starting over. */}
+            {unit && orderLoading && <div className="ch-s">Loading {unit}'s current order…</div>}
+            {unit && !orderLoading && orderDoc && orderDoc.updatedAt && (
               <div className="savemsg info" style={{ marginTop: 10 }}>
+                <ClipboardCheck size={13} style={{ verticalAlign: "-2px" }} />{" "}
+                <b>{unit} has already started this month's order.</b> Last updated{" "}
+                {new Date(orderDoc.updatedAt).toLocaleString()}
+                {orderDoc.contributors && orderDoc.contributors.length ? " by " + orderDoc.contributors.join(", ") : ""}.
+                {" "}Add what you still need — don't re-add what's already listed.
+              </div>
+            )}
+            {unit && !orderLoading && !orderDoc && orderSync !== "offline" && (
+              <div className="ch-s">No one has ordered for {unit} yet this month.</div>
+            )}
+            {orderSync === "offline" && (
+              <div className="savemsg err" style={{ marginTop: 10 }}>
                 <AlertTriangle size={13} style={{ verticalAlign: "-2px" }} />{" "}
-                The inventory was updated this month, so this unit's order was cleared. Please re-add the items you need.
+                Can't reach the server, so changes are <b>not</b> being saved for the other shifts. Reload once the connection is back.
               </div>
             )}
           </div>
 
           <div className="orderfields">
             <div className={showFieldErrors && !unit ? "field-err" : ""}>
-              <label>Unit / Unit *</label>
+              <label>Unit *</label>
               <select value={unit} onChange={(e) => { setUnit(e.target.value); setShowFieldErrors(false); }}>
                 <option value="" disabled hidden>Select unit…</option>
                 {UNITS.map((w) => <option key={w} value={w}>{w}</option>)}
@@ -3287,8 +3422,8 @@ export default function SupplyMatch() {
 
           <div className="cart-foot">
             <div className="cart-actions">
-              <button className="btn primary" disabled={!cartLines.length || saveStatus === "working"} onClick={sendToAdmin}>
-                <Mail size={15} /> Send to admin
+              <button className="btn primary" disabled={!unit || orderSync === "saving"} onClick={saveOrderNow}>
+                <Save size={15} /> {orderSync === "saving" ? "Saving…" : "Save order"}
               </button>
               <div className="row2">
                 <button className="btn" disabled={!cartLines.length || saveStatus === "working"} onClick={downloadOnly}>
@@ -3309,10 +3444,11 @@ export default function SupplyMatch() {
                 {saveMsg}
               </div>
             )}
-            {lastSubmitted && (
+            {unit && orderSync !== "offline" && (
               <div className="subnote">
-                <ClipboardCheck size={12} style={{ verticalAlign: "-2px" }} /> Last saved for {unit}: {new Date(lastSubmitted.at).toLocaleString()}
-                {lastSubmitted.by ? " by " + lastSubmitted.by : ""} ({lastSubmitted.lines.length} item{lastSubmitted.lines.length === 1 ? "" : "s"}).
+                {orderSync === "saving"
+                  ? "Saving…"
+                  : "Saved automatically for " + unit + " — every shift and every computer sees this same order."}
               </div>
             )}
           </div>
@@ -3322,6 +3458,52 @@ export default function SupplyMatch() {
 
       {mode === "admin" && (
       <div className="body adminbody">
+        <section className="adminpanel">
+          <div className="baseline-head">
+            <div>
+              <h2><ClipboardCheck size={18} /> Orders this month</h2>
+              <p className="sub">
+                Each unit builds one shared order that every shift adds to. Nothing is emailed while they work — collect the final version here whenever you're ready.
+              </p>
+            </div>
+            <button className="btn" disabled={ordersStatus === "loading"} onClick={refreshOrders}>
+              <RefreshCw size={15} /> {ordersStatus === "loading" ? "Loading…" : "Refresh"}
+            </button>
+          </div>
+
+          <div className="admin-savebar">
+            <button className="btn primary" disabled={ordersStatus === "emailing" || ordersStatus === "loading"} onClick={emailAllOrders}>
+              <Mail size={15} /> {ordersStatus === "emailing" ? "Sending…" : "Email me all orders"}
+            </button>
+            {ordersMsg && <div className="savemsg info">{ordersMsg}</div>}
+          </div>
+
+          <div className="admintable">
+            <div className="admintable-head orders-head">
+              <div>Unit</div>
+              <div>Items</div>
+              <div>Last updated</div>
+              <div>Ordered by</div>
+              <div></div>
+            </div>
+            <div className="admintable-body">
+              {orderRows.map((row) => (
+                <div key={row.unit} className={"admintable-row orders-row" + (row.entries.length ? "" : " hidden-row")}>
+                  <div className="atc-code">{row.unit}</div>
+                  <div>{row.entries.length || "—"}</div>
+                  <div>{row.doc && row.doc.updatedAt ? new Date(row.doc.updatedAt).toLocaleString() : "Not started"}</div>
+                  <div className="atc-desc">{orderAuthor(row.doc) || "—"}</div>
+                  <div>
+                    <button className="btn" disabled={!row.entries.length} onClick={() => downloadUnitOrder(row)}>
+                      <Download size={14} /> Download
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="adminpanel">
           <div className="baseline-head">
             <div>
