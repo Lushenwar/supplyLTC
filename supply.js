@@ -5,6 +5,7 @@ import {
   ShoppingCart, Plus, Minus, Trash2, Printer, Save, ClipboardCheck, Mail, Lock, Unlock,
   Upload, FileSpreadsheet, PackagePlus, PackageMinus, RefreshCw
 } from "lucide-react";
+import { nextOrderByDate } from "./order-date.js";
 
 // PRE-ENRICHED INVENTORY WITH ZERO RUNTIME API COSTS
 // To bypass hotlink blocking and guarantee 100% reliable image loading:
@@ -2043,15 +2044,6 @@ function sanitizeFilePart(s) {
   return (s || "").replace(/[\\/:*?"<>|]/g, "-").trim();
 }
 
-// The template has no dedicated date cell for the submission deadline — it's
-// embedded in a reminder sentence (row 3: 'Order Form Submitted NO LATER
-// THAN Jun.3rd, 2026 (Wed)'). Pull the month/day/year out of it.
-function parseOrderByDate(text) {
-  const m = /([A-Za-z]{3,9})\.?\s*(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})/.exec(text || "");
-  if (!m) return null;
-  const d = new Date(m[1] + " " + m[2] + ", " + m[3]);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
 
 export default function SupplyMatch() {
   const [query, setQuery] = useState("");
@@ -2105,12 +2097,12 @@ export default function SupplyMatch() {
   // keyed by INVENTORY array index (so item order/template-row mapping never
   // shifts), a list of hidden indices (soft "remove"), and admin-added items
   // (appended after INVENTORY, same as the existing app-only extra items).
-  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null, itemNotes: {} });
+  const [overrides, setOverrides] = useState({ stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, itemNotes: {} });
   const [overridesLoaded, setOverridesLoaded] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || "");
   const refreshOverrides = () =>
     fetch("/api/inventory", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null, itemNotes: {} }))
+      .then((r) => (r.ok ? r.json() : { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, itemNotes: {} }))
       .then((data) => {
         setOverrides({
           stock: data.stock || {},
@@ -2120,7 +2112,6 @@ export default function SupplyMatch() {
           baseline: Array.isArray(data.baseline) ? data.baseline : null,
           baselineDate: data.baselineDate || null,
           baselineLabel: data.baselineLabel || null,
-          orderByDate: data.orderByDate || null,
           itemNotes: data.itemNotes || {},
         });
         setOverridesLoaded(true);
@@ -2259,7 +2250,6 @@ export default function SupplyMatch() {
           baseline: overrides.baseline,
           baselineDate: overrides.baselineDate,
           baselineLabel: overrides.baselineLabel,
-          orderByDate: overrides.orderByDate,
           itemNotes: adminItemNotes,
         }),
       });
@@ -2427,8 +2417,6 @@ export default function SupplyMatch() {
       const ws = wb.worksheets[0];
       if (!ws) throw new Error("No worksheet found in the file.");
 
-      const orderByDate = parseOrderByDate(cellText(ws.getRow(3), 4));
-
       const rows = [];
       for (let r = TEMPLATE_FIRST_ROW; r <= ws.rowCount; r++) {
         const row = ws.getRow(r);
@@ -2500,13 +2488,12 @@ export default function SupplyMatch() {
         .filter(({ existing, m }) => existing && String(existing.stock ?? "").trim() !== String(m.stock ?? "").trim())
         .map(({ m, existing }) => ({ code: m.code, desc: m.desc, from: existing.stock, to: m.stock }));
 
-      setBaselinePreview({ merged, added, removed, changed, autoCoded, fileName: file.name, orderByDate });
+      setBaselinePreview({ merged, added, removed, changed, autoCoded, fileName: file.name });
       setBaselineStatus("ready");
       setBaselineMsg(
         rows.length + " items parsed — " + added.length + " new, " + removed.length + " removed, " +
         changed.length + " stock change" + (changed.length === 1 ? "" : "s") +
-        (autoCoded ? " · " + autoCoded + " item" + (autoCoded === 1 ? "" : "s") + " had no code (auto-assigned NOCODE-XXXX)" : "") +
-        (orderByDate ? " · order by " + new Date(orderByDate).toLocaleDateString() : " · no order-by date found in the file") + "."
+        (autoCoded ? " · " + autoCoded + " item" + (autoCoded === 1 ? "" : "s") + " had no code (auto-assigned NOCODE-XXXX)" : "") + "."
       );
     } catch (err) {
       setBaselineStatus("error");
@@ -2530,7 +2517,6 @@ export default function SupplyMatch() {
           baseline: baselinePreview.merged,
           baselineDate: new Date().toISOString(),
           baselineLabel: baselinePreview.fileName,
-          orderByDate: baselinePreview.orderByDate,
         }),
       });
       if (!res.ok) {
@@ -2570,7 +2556,6 @@ export default function SupplyMatch() {
           baseline: null,
           baselineDate: null,
           baselineLabel: null,
-          orderByDate: null,
         }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Server error");
@@ -3347,9 +3332,7 @@ export default function SupplyMatch() {
             <div className="ch-s">
               This is {unit || "the unit"}'s one shared order for the month — every shift adds to the same list, and the admin collects it at the deadline.
             </div>
-            {overrides.orderByDate && (
-              <div className="ch-s"><b>Order by {new Date(overrides.orderByDate).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</b></div>
-            )}
+            <div className="ch-s"><b>Order by {nextOrderByDate().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</b></div>
             {/* Who touched this order already — so a later shift can see at a
                 glance that their unit has ordered, instead of starting over. */}
             {unit && orderLoading && <div className="ch-s">Loading {unit}'s current order…</div>}

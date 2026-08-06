@@ -11,7 +11,7 @@ import { put, list, del } from "@vercel/blob";
 const BLOB_PREFIX = "inventory-overrides/";
 const ADMIN_PASSCODE = "Sthaa123!";
 
-const EMPTY = { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, orderByDate: null, itemNotes: {} };
+const EMPTY = { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, itemNotes: {} };
 
 async function readOverrides() {
   const { blobs } = await list({ prefix: BLOB_PREFIX });
@@ -28,7 +28,6 @@ async function readOverrides() {
     baseline: Array.isArray(data.baseline) ? data.baseline : null,
     baselineDate: data.baselineDate || null,
     baselineLabel: data.baselineLabel || null,
-    orderByDate: data.orderByDate || null,
     itemNotes: (data.itemNotes && typeof data.itemNotes === "object" && !Array.isArray(data.itemNotes)) ? data.itemNotes : {},
   };
 }
@@ -46,7 +45,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { passcode, stock, hidden, added, images, baseline, baselineDate, baselineLabel, orderByDate, itemNotes } = req.body || {};
+    const { passcode, stock, hidden, added, images, baseline, baselineDate, baselineLabel, itemNotes } = req.body || {};
     if (passcode !== ADMIN_PASSCODE) {
       return res.status(401).json({ error: "Invalid passcode" });
     }
@@ -71,7 +70,6 @@ export default async function handler(req, res) {
           baseline: baseline ?? null,
           baselineDate: baselineDate ?? null,
           baselineLabel: baselineLabel ?? null,
-          orderByDate: orderByDate ?? null,
           itemNotes: (itemNotes && typeof itemNotes === "object" && !Array.isArray(itemNotes)) ? itemNotes : {},
         }),
         {
