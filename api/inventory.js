@@ -9,7 +9,24 @@ import { put, list, del } from "@vercel/blob";
 // and stock edits take "two saves" to show up. New blobs are immutable, so the
 // latest one (by uploadedAt) is always correct, and old ones are deleted after.
 const BLOB_PREFIX = "inventory-overrides/";
-const ADMIN_PASSCODE = "Sthaa123!";
+
+// Server-side only. The app URL is public, so a passcode compiled into the
+// client bundle is readable by anyone who opens devtools — it lives in Vercel's
+// env now and the browser never receives it, only sends what the admin typed.
+// No default on purpose: an unset variable must lock admin out, not open it up.
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
+
+function denyPasscode(passcode, res) {
+  if (!ADMIN_PASSCODE) {
+    res.status(500).json({ error: "ADMIN_PASSCODE is not set on the server." });
+    return true;
+  }
+  if (passcode !== ADMIN_PASSCODE) {
+    res.status(401).json({ error: "Invalid passcode" });
+    return true;
+  }
+  return false;
+}
 
 const EMPTY = { stock: {}, hidden: [], added: [], images: {}, baseline: null, baselineDate: null, baselineLabel: null, itemNotes: {} };
 
@@ -45,10 +62,13 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { passcode, stock, hidden, added, images, baseline, baselineDate, baselineLabel, itemNotes } = req.body || {};
-    if (passcode !== ADMIN_PASSCODE) {
-      return res.status(401).json({ error: "Invalid passcode" });
-    }
+    const { passcode, verify, stock, hidden, added, images, baseline, baselineDate, baselineLabel, itemNotes } = req.body || {};
+    if (denyPasscode(passcode, res)) return;
+
+    // Login check only — the admin button asks here instead of comparing a
+    // passcode the client would have to know.
+    if (verify) return res.status(200).json({ ok: true });
+
     if (!stock || typeof stock !== "object" || !Array.isArray(hidden) || !Array.isArray(added)) {
       return res.status(400).json({ error: "Missing or invalid inventory data" });
     }

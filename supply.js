@@ -1887,6 +1887,17 @@ input,select,textarea{font-family:inherit}
 .savemsg.info{background:var(--teal-soft);border-color:#BcdEde;color:var(--teal-d)}
 .savemsg.err{background:var(--red-soft);border-color:#E7C2C2;color:#7E3030}
 .subnote{font-size:11.5px;color:var(--faint);margin-top:8px}
+.orderhist{margin-top:10px;border:1px solid var(--line);border-radius:9px;background:#FBFCFC}
+.orderhist summary{list-style:none;cursor:pointer;padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--teal-d);display:flex;align-items:center;gap:7px}
+.orderhist summary::-webkit-details-marker{display:none}
+.orderhist-list{border-top:1px solid var(--line2);max-height:230px;overflow:auto}
+.orderhist-entry{padding:9px 12px;border-bottom:1px solid var(--line2)}
+.orderhist-entry:last-child{border-bottom:none}
+.orderhist-who{font-size:12px;font-weight:700;color:var(--ink)}
+.orderhist-when{font-size:11px;color:var(--faint);margin-top:1px}
+.orderhist-change{font-size:11.5px;color:var(--soft);margin-top:4px;line-height:1.4;display:flex;gap:6px}
+.orderhist-change .oc-code{font-family:var(--mono);font-weight:600;color:var(--ink);flex-shrink:0}
+.orderhist-change .oc-what{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .miniflag{font-size:10.5px;font-weight:700;color:var(--teal-d);background:var(--teal-soft);border-radius:5px;padding:2px 6px;margin-left:6px}
 .adminbody{padding:24px;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:18px}
 .adminpanel{width:100%;max-width:1280px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 26px;box-shadow:0 1px 2px rgba(20,36,43,.04)}
@@ -2026,10 +2037,23 @@ const ORDER_UNIT_KEY = "supply-order-unit";
 // ponytail: old cycles' keys are left behind; ~1KB each, harmless for years.
 const cartKey = (cycle, unit) => "supply-order-cart-" + cycle + "-" + unit;
 
-// Admin mode is a soft gate on the UI only — the real protection is that
-// /api/inventory's POST endpoint checks this same passcode server-side.
-const ADMIN_PASSCODE = "Sthaa123!";
+// Admin mode is a soft gate on the UI only — the real protection is that every
+// /api/inventory POST is checked server-side against process.env.ADMIN_PASSCODE.
+// The passcode is deliberately NOT in this file: the app URL is public, so
+// anything here ships in the bundle and is readable in devtools.
 const ADMIN_SESSION_KEY = "supply-admin-session";
+
+// Ask the server whether this passcode is the admin one.
+async function verifyPasscode(passcode) {
+  const res = await fetch("/api/inventory", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ passcode, verify: true }),
+  });
+  if (res.ok) return true;
+  if (res.status === 401) return false;
+  throw new Error(((await res.json().catch(() => ({}))).error) || "Server error");
+}
 
 function loadJSON(key, fallback) {
   try {
@@ -2058,23 +2082,30 @@ export default function SupplyMatch() {
   const [adminImgStatus, setAdminImgStatus] = useState("idle"); // idle | checking | saved | error | saving
 
   // ---- Admin mode state ----
-  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === ADMIN_PASSCODE);
+  // A stored code means this tab logged in earlier; the server re-checks it on
+  // every write regardless, so trusting it for the UI gate costs nothing.
+  const [isAdmin, setIsAdmin] = useState(() => !!sessionStorage.getItem(ADMIN_SESSION_KEY));
 
-  function handleAdminClick() {
+  async function handleAdminClick() {
     if (isAdmin) {
       setIsAdmin(false);
       setAdminPasscode("");
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
-      if (mode === "admin") setMode("verify");
+      setMode("order");
       return;
     }
     const code = window.prompt("Enter admin passcode:");
-    if (code === ADMIN_PASSCODE) {
-      setIsAdmin(true);
-      setAdminPasscode(code);
-      sessionStorage.setItem(ADMIN_SESSION_KEY, code);
-    } else if (code !== null) {
-      window.alert("Incorrect passcode.");
+    if (code === null) return;
+    try {
+      if (await verifyPasscode(code)) {
+        setIsAdmin(true);
+        setAdminPasscode(code);
+        sessionStorage.setItem(ADMIN_SESSION_KEY, code);
+      } else {
+        window.alert("Incorrect passcode.");
+      }
+    } catch (err) {
+      window.alert("Couldn't check the passcode: " + (err && err.message ? err.message : err));
     }
   }
 
@@ -2230,9 +2261,13 @@ export default function SupplyMatch() {
     setAdminNewItem(emptyNewItem);
   }
 
-  function removeAddedItem(addedIdx) {
-    setAdminAdded((p) => p.filter((_, i) => i !== addedIdx));
-  }
+  // No delete for admin-added items on purpose. Carts, stock edits, notes and
+  // hides are all keyed by position in `inv`, so splicing an item out of
+  // `added` silently repoints every later index — a unit's saved order would
+  // start referring to the wrong item. Hiding is the same soft-remove the
+  // baseline items use: gone from the kiosk and from the export, position kept.
+  // ponytail: hidden entries linger in `added`, but a baseline upload clears
+  // that array, so they self-clean every month.
 
   async function saveAdminChanges() {
     setAdminSaveStatus("working");
@@ -2952,6 +2987,24 @@ export default function SupplyMatch() {
     w.print();
   }
 
+  // Newest first — the shift that just handed over is the one you want to read.
+  const orderHistory = useMemo(
+    () => ((orderDoc && Array.isArray(orderDoc.history)) ? orderDoc.history.slice().reverse() : []),
+    [orderDoc]
+  );
+
+  // One "3 → 5" line per changed item. The history stores item indices, so the
+  // code is resolved here against the same inv the cart is drawn from.
+  const historyChanges = (changes) =>
+    Object.entries(changes || {}).map(([idx, [from, to]]) => {
+      const it = inv[Number(idx)];
+      return {
+        idx,
+        code: it ? (it.code || it.desc || "item " + idx) : "item no longer listed",
+        what: !from ? "added ×" + to : !to ? "removed" : "changed " + from + " → " + to,
+      };
+    });
+
   const item = selIdx === null ? null : inv[selIdx];
 
   function selectItem(idx) {
@@ -3348,6 +3401,29 @@ export default function SupplyMatch() {
             {unit && !orderLoading && !orderDoc && orderSync !== "offline" && (
               <div className="ch-s">No one has ordered for {unit} yet this month.</div>
             )}
+            {/* Who changed what, per shift. Lives on the order (which is keyed by
+                unit on the server), so it reads the same on any computer. */}
+            {orderHistory.length > 0 && (
+              <details className="orderhist">
+                <summary>
+                  <ClipboardCheck size={14} /> What each shift ordered ({orderHistory.length})
+                </summary>
+                <div className="orderhist-list">
+                  {orderHistory.map((h, i) => (
+                    <div key={i} className="orderhist-entry">
+                      <div className="orderhist-who">{h.by || "Name not entered"}</div>
+                      <div className="orderhist-when">{new Date(h.at).toLocaleString()}</div>
+                      {historyChanges(h.changes).map((c) => (
+                        <div key={c.idx} className="orderhist-change">
+                          <span className="oc-code">{c.code}</span>
+                          <span className="oc-what">{c.what}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
             {orderSync === "offline" && (
               <div className="savemsg err" style={{ marginTop: 10 }}>
                 <AlertTriangle size={13} style={{ verticalAlign: "-2px" }} />{" "}
@@ -3714,15 +3790,9 @@ export default function SupplyMatch() {
                         />
                       </div>
                       <div>
-                        {idx < baseLen ? (
-                          <button className="btn" onClick={() => toggleAdminHidden(idx)}>
-                            {adminHidden.has(idx) ? "Unhide" : "Hide"}
-                          </button>
-                        ) : (
-                          <button className="btn danger" onClick={() => removeAddedItem(idx - baseLen)}>
-                            <Trash2 size={14} />
-                          </button>
-                        )}
+                        <button className="btn" onClick={() => toggleAdminHidden(idx)}>
+                          {adminHidden.has(idx) ? "Unhide" : "Hide"}
+                        </button>
                       </div>
                     </div>
                   ))}

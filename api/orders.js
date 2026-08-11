@@ -31,6 +31,52 @@ export const unitSegment = (pathname) => pathname.split("/")[2];
 
 export const byNewest = (a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1);
 
+// A shift working on the order saves every couple of seconds. Folding a run of
+// saves by the same person into one entry is what keeps the history readable as
+// "Sarah added 3 things at 2pm" instead of forty keystroke-sized rows.
+const COALESCE_MS = 10 * 60 * 1000;
+// A month of coalesced entries is nowhere near this; the cap just stops a
+// pathological cycle from growing the doc without bound.
+const HISTORY_MAX = 100;
+
+// What this save changed, as { itemIndex: [from, to] }. Item indices rather
+// than codes: the client already resolves indices against the same inventory to
+// draw the cart, and indices are stable within a cycle.
+export const appendHistory = (history, prevLines, nextLines, by, now) => {
+  const changes = {};
+  new Set([...Object.keys(prevLines || {}), ...Object.keys(nextLines || {})]).forEach((k) => {
+    const from = Number((prevLines || {})[k]) || 0;
+    const to = Number((nextLines || {})[k]) || 0;
+    if (from !== to) changes[k] = [from, to];
+  });
+  // An autosave that changed nothing (a name edit, a re-save) is not history.
+  if (!Object.keys(changes).length) return Array.isArray(history) ? history : [];
+
+  const list = Array.isArray(history) ? history.slice() : [];
+  const name = String(by || "").trim();
+  const last = list[list.length - 1];
+
+  if (last && last.by === name && now - Date.parse(last.at) < COALESCE_MS) {
+    // Keep the original "from" so a 0→1→2→3 run reads as one 0→3 change, and
+    // drop anything the person ended up putting back the way they found it.
+    const merged = { ...last.changes };
+    Object.entries(changes).forEach(([k, [from, to]]) => {
+      const start = merged[k] ? merged[k][0] : from;
+      if (start === to) delete merged[k];
+      else merged[k] = [start, to];
+    });
+    if (!Object.keys(merged).length) {
+      list.pop();
+      return list;
+    }
+    list[list.length - 1] = { by: name, at: new Date(now).toISOString(), changes: merged };
+    return list;
+  }
+
+  list.push({ by: name, at: new Date(now).toISOString(), changes });
+  return list.slice(-HISTORY_MAX);
+};
+
 export const mergeContributors = (prev, by) => {
   const list = Array.isArray(prev) ? prev.slice() : [];
   const name = String(by || "").trim();
@@ -106,6 +152,7 @@ export default async function handler(req, res) {
         updatedAt: new Date().toISOString(),
         updatedBy: name || null,
         contributors,
+        history: appendHistory(prev && prev.history, prev && prev.lines, lines, by, Date.now()),
       };
       // Random tail so two kiosks saving in the same millisecond can't overwrite
       // each other's version — the timestamp prefix still orders them.
