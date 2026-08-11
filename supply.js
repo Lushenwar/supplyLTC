@@ -1921,7 +1921,8 @@ input,select,textarea{font-family:inherit}
 .admintable-body{max-height:calc(100vh - 380px);overflow:auto}
 .admintable-row{border-top:1px solid var(--line2);font-size:12.5px}
 .admintable-row.hidden-row{opacity:.45}
-.orders-head,.orders-row{grid-template-columns:0.7fr 0.6fr 1.6fr 1.6fr 1fr}
+.orders-head,.orders-row{grid-template-columns:0.7fr 0.6fr 1.5fr 1.4fr 1.5fr}
+.orders-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .orders-row.hidden-row{opacity:.5}
 .atc-code{font-family:var(--mono);font-weight:600}
 .atc-desc{color:var(--soft)}
@@ -2336,6 +2337,28 @@ export default function SupplyMatch() {
       }),
     [orders, inv]
   );
+
+  // Wipe a unit's order, history and contributors for this cycle. Mainly a
+  // testing tool: it's the only way to get a unit back to "nobody has ordered
+  // yet" without waiting for the next monthly baseline to start a new cycle.
+  async function resetUnitOrder(unitName) {
+    if (!window.confirm(
+      "Delete " + unitName + "'s entire order for this cycle, including who-ordered-what history?\n\nThis cannot be undone."
+    )) return;
+    setOrdersMsg("Resetting " + unitName + "…");
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reset: true, passcode: adminPasscode, unit: unitName, cycle }),
+      });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))).error) || "Server error");
+      await refreshOrders();
+      setOrdersMsg(unitName + "'s order was deleted. Any kiosk still showing it must be reloaded, or it will save its copy straight back.");
+    } catch (err) {
+      setOrdersMsg("Couldn't reset " + unitName + ": " + (err && err.message ? err.message : err));
+    }
+  }
 
   async function blobToBase64(blob) {
     const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -3552,9 +3575,12 @@ export default function SupplyMatch() {
                   <div>{row.entries.length || "—"}</div>
                   <div>{row.doc && row.doc.updatedAt ? new Date(row.doc.updatedAt).toLocaleString() : "Not started"}</div>
                   <div className="atc-desc">{orderAuthor(row.doc) || "—"}</div>
-                  <div>
+                  <div className="orders-actions">
                     <button className="btn" disabled={!row.entries.length} onClick={() => downloadUnitOrder(row)}>
                       <Download size={14} /> Download
+                    </button>
+                    <button className="btn danger" disabled={!row.doc} onClick={() => resetUnitOrder(row.unit)} title="Delete this unit's order and history for this cycle">
+                      <Trash2 size={14} /> Reset
                     </button>
                   </div>
                 </div>

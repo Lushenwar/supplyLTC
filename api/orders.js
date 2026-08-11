@@ -14,6 +14,12 @@ import { put, list, del } from "@vercel/blob";
 // blob is subject to read-after-write staleness.
 const PREFIX = "orders/";
 
+// Kiosk saves are deliberately unauthenticated — any nurse on any unit writes
+// orders. Wiping one is not, so the reset path checks the same server-side
+// passcode as /api/inventory. ponytail: four duplicated lines beat a shared
+// module for one check in one other file.
+const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE;
+
 // Versions kept per unit per cycle. Old ones are free undo if someone clears a
 // cart by accident; the cap keeps a month of autosaves from piling up.
 const KEEP = 20;
@@ -128,10 +134,30 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { unit, cycle, lines, by } = req.body || {};
+    const { unit, cycle, lines, by, reset, passcode } = req.body || {};
     if (!unit || typeof unit !== "string") {
       return res.status(400).json({ error: "Missing unit" });
     }
+
+    // Admin "Reset" — drops every version of this unit's order for this cycle,
+    // which takes the cart, the history and the contributor list with it. Used
+    // to get a clean slate when testing that units really are shared.
+    if (reset) {
+      if (!ADMIN_PASSCODE) {
+        return res.status(500).json({ error: "ADMIN_PASSCODE is not set on the server." });
+      }
+      if (passcode !== ADMIN_PASSCODE) {
+        return res.status(401).json({ error: "Invalid passcode" });
+      }
+      try {
+        const { blobs } = await list({ prefix: unitDir(cycle, unit) });
+        await Promise.all(blobs.map((b) => del(b.url).catch(() => {})));
+        return res.status(200).json({ ok: true, deleted: blobs.length });
+      } catch (err) {
+        return res.status(500).json({ error: err.message || "Failed to reset order" });
+      }
+    }
+
     if (!lines || typeof lines !== "object" || Array.isArray(lines)) {
       return res.status(400).json({ error: "Invalid order lines" });
     }
